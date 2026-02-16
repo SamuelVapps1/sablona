@@ -3,6 +3,8 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net462</TargetFramework>
+    <LangVersion>8.0</LangVersion>
+    <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <RootNamespace>PetShopLabelPrinter</RootNamespace>
     <AssemblyName>PetShopLabelPrinter</AssemblyName>

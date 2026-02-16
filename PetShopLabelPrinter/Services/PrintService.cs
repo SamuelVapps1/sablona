@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using PetShopLabelPrinter.Data;
 using PetShopLabelPrinter.Models;
 using PetShopLabelPrinter.Rendering;
 

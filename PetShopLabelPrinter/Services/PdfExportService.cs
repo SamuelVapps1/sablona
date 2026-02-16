@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
+using PetShopLabelPrinter.Data;
 using PetShopLabelPrinter.Models;
 using PetShopLabelPrinter.Rendering;
 
