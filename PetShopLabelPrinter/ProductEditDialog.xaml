@@ -41,6 +41,9 @@
                 <TextBox x:Name="TxtLargePackPrice" Grid.Column="3" Padding="6,4"/>
             </Grid>
 
+            <TextBlock Text="Cena za kg - prepísať (voliteľné, prázdne = vypočítané)" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtUnitPriceOverride" Margin="0,0,0,12" Padding="6,4" ToolTip="Napríklad 2,70"/>
+
             <TextBlock Text="Poznámky" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtNotes" Margin="0,0,0,16" Padding="6,4" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto"/>
 

@@ -256,6 +256,7 @@ namespace PetShopLabelPrinter
             {
                 s.ProductNameFontFamily = TxtProductNameFont?.Text ?? s.ProductNameFontFamily;
                 double.TryParse(TxtProductNameSize?.Text, out s.ProductNameFontSizePt);
+                double.TryParse(TxtProductNameMinSize?.Text, out s.ProductNameMinFontSizePt);
                 s.ProductNameBold = ChkProductNameBold?.IsChecked == true;
                 s.VariantTextFontFamily = TxtVariantFont?.Text ?? s.VariantTextFontFamily;
                 double.TryParse(TxtVariantSize?.Text, out s.VariantTextFontSizePt);
@@ -277,6 +278,7 @@ namespace PetShopLabelPrinter
             var s = _db.GetTemplateSettings();
             TxtProductNameFont.Text = s.ProductNameFontFamily;
             TxtProductNameSize.Text = s.ProductNameFontSizePt.ToString();
+            TxtProductNameMinSize.Text = s.ProductNameMinFontSizePt.ToString();
             ChkProductNameBold.IsChecked = s.ProductNameBold;
             TxtVariantFont.Text = s.VariantTextFontFamily;
             TxtVariantSize.Text = s.VariantTextFontSizePt.ToString();
@@ -314,6 +316,7 @@ namespace PetShopLabelPrinter
             var s = _db.GetTemplateSettings();
             s.ProductNameFontFamily = TxtProductNameFont.Text;
             double.TryParse(TxtProductNameSize.Text, out s.ProductNameFontSizePt);
+            double.TryParse(TxtProductNameMinSize.Text, out s.ProductNameMinFontSizePt);
             s.ProductNameBold = ChkProductNameBold.IsChecked == true;
             s.VariantTextFontFamily = TxtVariantFont.Text;
             double.TryParse(TxtVariantSize.Text, out s.VariantTextFontSizePt);

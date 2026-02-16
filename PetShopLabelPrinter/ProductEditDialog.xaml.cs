@@ -22,6 +22,7 @@ namespace PetShopLabelPrinter
                 TxtLargePackLabel.Text = product.LargePackLabel;
                 TxtLargePackWeight.Text = product.LargePackWeightKg?.ToString(CultureInfo.InvariantCulture) ?? "";
                 TxtLargePackPrice.Text = product.LargePackPrice?.ToString(CultureInfo.InvariantCulture) ?? "";
+                TxtUnitPriceOverride.Text = product.UnitPriceOverride?.ToString("N2", CultureInfo.GetCultureInfo("sk-SK")) ?? "";
                 TxtNotes.Text = product.Notes ?? "";
             }
         }
@@ -41,6 +42,10 @@ namespace PetShopLabelPrinter
             Product.LargePackLabel = TxtLargePackLabel.Text?.Trim() ?? "";
             Product.LargePackWeightKg = decimal.TryParse(TxtLargePackWeight.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var lw) ? lw : null;
             Product.LargePackPrice = decimal.TryParse(TxtLargePackPrice.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var lp) ? lp : null;
+            decimal upo;
+            Product.UnitPriceOverride = string.IsNullOrWhiteSpace(TxtUnitPriceOverride.Text) ? null
+                : (decimal.TryParse(TxtUnitPriceOverride.Text, NumberStyles.Any, CultureInfo.GetCultureInfo("sk-SK"), out upo)
+                    || decimal.TryParse(TxtUnitPriceOverride.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out upo) ? (decimal?)upo : null);
             Product.Notes = TxtNotes.Text?.Trim() ?? "";
             DialogResult = true;
             Close();

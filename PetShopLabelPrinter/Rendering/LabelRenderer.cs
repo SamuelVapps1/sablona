@@ -8,6 +8,8 @@ namespace PetShopLabelPrinter.Rendering
 {
     /// <summary>
     /// Renders a single 150mm x 38mm label with mm-based coordinates.
+    /// ProductName: max 2 lines, auto-reduce font to min if overflow.
+    /// VariantText: max 1 line, truncate with ellipsis.
     /// </summary>
     public class LabelRenderer
     {
@@ -55,28 +57,39 @@ namespace PetShopLabelPrinter.Rendering
             var y = rect.Top;
             var lineH = Units.MmToWpfUnits(2);
 
-            // ProductName
-            var pnFont = new Typeface(
-                new FontFamily(_settings.ProductNameFontFamily),
-                FontStyles.Normal,
-                _settings.ProductNameBold ? FontWeights.Bold : FontWeights.Normal,
-                FontStretches.Normal);
+            // ProductName: max 2 lines, auto-reduce font to min if overflow
+            var maxTwoLinesHeight = rect.Height * 0.5;
             var pnSize = _settings.ProductNameFontSizePt * 96.0 / 72.0;
-            var pnText = new FormattedText(
-                product.ProductName ?? "",
-                System.Globalization.CultureInfo.CurrentUICulture,
-                FlowDirection.LeftToRight,
-                pnFont,
-                pnSize,
-                Brushes.Black,
-                dpi);
-            pnText.MaxTextWidth = rect.Width;
-            pnText.MaxTextHeight = rect.Height / 2;
-            var pnX = GetAlignX(rect, pnText.Width, _settings.ProductNameAlign);
-            dc.DrawText(pnText, new Point(rect.Left + pnX, y));
-            y += pnText.Height + lineH;
+            var minSize = _settings.ProductNameMinFontSizePt * 96.0 / 72.0;
+            FormattedText? pnText = null;
+            for (var trySize = pnSize; trySize >= minSize; trySize -= 1)
+            {
+                var pnFont = new Typeface(
+                    new FontFamily(_settings.ProductNameFontFamily),
+                    FontStyles.Normal,
+                    _settings.ProductNameBold ? FontWeights.Bold : FontWeights.Normal,
+                    FontStretches.Normal);
+                pnText = new FormattedText(
+                    product.ProductName ?? "",
+                    System.Globalization.CultureInfo.CurrentUICulture,
+                    FlowDirection.LeftToRight,
+                    pnFont,
+                    trySize,
+                    Brushes.Black,
+                    dpi);
+                pnText.MaxTextWidth = rect.Width;
+                pnText.MaxTextHeight = maxTwoLinesHeight;
+                pnText.Trimming = TextTrimming.CharacterEllipsis;
+                if (pnText.Height <= maxTwoLinesHeight + 1) break;
+            }
+            if (pnText != null)
+            {
+                var pnX = GetAlignX(rect, pnText.Width, _settings.ProductNameAlign);
+                dc.DrawText(pnText, new Point(rect.Left + pnX, y));
+                y += pnText.Height + lineH;
+            }
 
-            // VariantText
+            // VariantText: max 1 line, truncate with ellipsis
             var vtFont = new Typeface(
                 new FontFamily(_settings.VariantTextFontFamily),
                 FontStyles.Normal,
@@ -92,6 +105,8 @@ namespace PetShopLabelPrinter.Rendering
                 Brushes.Black,
                 dpi);
             vtText.MaxTextWidth = rect.Width;
+            vtText.MaxTextHeight = vtSize * 1.3;
+            vtText.Trimming = TextTrimming.CharacterEllipsis;
             var vtX = GetAlignX(rect, vtText.Width, _settings.VariantTextAlign);
             dc.DrawText(vtText, new Point(rect.Left + vtX, y));
         }
@@ -130,7 +145,7 @@ namespace PetShopLabelPrinter.Rendering
             DrawSection(dc, product.LargePackLabel ?? "", Formatting.FormatPrice(product.LargePackPrice),
                 midRect, dpi);
 
-            // Bottom: UnitPricePerKg
+            // Bottom: UnitPricePerKg (override if set, else computed; 2 decimals, comma, €)
             var unitText = Formatting.FormatUnitPrice(product.UnitPricePerKg);
             var uFont = new Typeface(
                 new FontFamily(_settings.UnitPriceSmallFontFamily),

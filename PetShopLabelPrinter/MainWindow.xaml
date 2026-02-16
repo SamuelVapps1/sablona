@@ -107,6 +107,8 @@
                                 <TextBox x:Name="TxtProductNameSize" Width="40" Margin="4,2" TextChanged="AdminSetting_Changed"/>
                                 <CheckBox x:Name="ChkProductNameBold" Content="Bold" VerticalAlignment="Center" Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
                             </StackPanel>
+                            <TextBlock Text="ProductName min. veľkosť (pri pretečení)" Margin="0,4,0,0"/>
+                            <TextBox x:Name="TxtProductNameMinSize" Width="40" Margin="0,2" TextChanged="AdminSetting_Changed" ToolTip="Minimálna veľkosť písma pri skrátení dlhého názvu"/>
                             <TextBlock Text="VariantText font / veľkosť" Margin="0,8,0,0"/>
                             <StackPanel Orientation="Horizontal">
                                 <TextBox x:Name="TxtVariantFont" Width="120" Margin="0,2" TextChanged="AdminSetting_Changed"/>

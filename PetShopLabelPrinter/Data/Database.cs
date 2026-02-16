@@ -40,8 +40,28 @@ namespace PetShopLabelPrinter.Data
                     LargePackLabel TEXT,
                     LargePackWeightKg REAL,
                     LargePackPrice REAL,
+                    UnitPriceOverride REAL,
                     Notes TEXT
                 )");
+
+            // Migration: add UnitPriceOverride if missing (existing DBs)
+            try
+            {
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "PRAGMA table_info(Products)";
+                    using var r = cmd.ExecuteReader();
+                    var hasOverride = false;
+                    while (r.Read())
+                    {
+                        var name = r.GetString(1);
+                        if (name == "UnitPriceOverride") { hasOverride = true; break; }
+                    }
+                    if (!hasOverride)
+                        Execute(conn, "ALTER TABLE Products ADD COLUMN UnitPriceOverride REAL");
+                }
+            }
+            catch { /* ignore migration errors */ }
 
             Execute(conn, @"
                 CREATE TABLE IF NOT EXISTS PrintHistory (
@@ -92,8 +112,8 @@ namespace PetShopLabelPrinter.Data
                     foreach (var (pn, vt, spl, spw, spp, lpl, lpw, lpp) in seed)
                     {
                         using var ins = conn.CreateCommand();
-                        ins.CommandText = @"INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice, LargePackLabel, LargePackWeightKg, LargePackPrice, Notes)
-                            VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, '')";
+                        ins.CommandText = @"INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice, LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, Notes)
+                            VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, NULL, '')";
                         ins.Parameters.AddWithValue("@pn", pn);
                         ins.Parameters.AddWithValue("@vt", vt);
                         ins.Parameters.AddWithValue("@spl", spl);
@@ -141,8 +161,8 @@ namespace PetShopLabelPrinter.Data
             {
                 cmd.CommandText = @"
                     INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice,
-                        LargePackLabel, LargePackWeightKg, LargePackPrice, Notes)
-                    VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, @notes)";
+                        LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, Notes)
+                    VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, @upo, @notes)";
                 AddProductParams(cmd, p);
                 cmd.ExecuteNonQuery();
             }
@@ -160,7 +180,8 @@ namespace PetShopLabelPrinter.Data
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 UPDATE Products SET ProductName=@pn, VariantText=@vt, SmallPackLabel=@spl, SmallPackWeightKg=@spw,
-                    SmallPackPrice=@spp, LargePackLabel=@lpl, LargePackWeightKg=@lpw, LargePackPrice=@lpp, Notes=@notes
+                    SmallPackPrice=@spp, LargePackLabel=@lpl, LargePackWeightKg=@lpw, LargePackPrice=@lpp,
+                    UnitPriceOverride=@upo, Notes=@notes
                 WHERE Id=@id";
             cmd.Parameters.AddWithValue("@id", p.Id);
             AddProductParams(cmd, p);
@@ -205,24 +226,43 @@ namespace PetShopLabelPrinter.Data
             cmd.Parameters.AddWithValue("@lpl", p.LargePackLabel ?? "");
             cmd.Parameters.AddWithValue("@lpw", p.LargePackWeightKg);
             cmd.Parameters.AddWithValue("@lpp", p.LargePackPrice);
+            cmd.Parameters.AddWithValue("@upo", p.UnitPriceOverride);
             cmd.Parameters.AddWithValue("@notes", p.Notes ?? "");
         }
 
         private Product ReadProduct(IDataReader r)
         {
-            return new Product
+            var idx = new System.Collections.Generic.Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < r.FieldCount; i++)
+                idx[r.GetName(i)] = i;
+
+            var p = new Product
             {
-                Id = r.GetInt64(0),
-                ProductName = r.GetString(1),
-                VariantText = r.IsDBNull(2) ? "" : r.GetString(2),
-                SmallPackLabel = r.IsDBNull(3) ? "" : r.GetString(3),
-                SmallPackWeightKg = r.IsDBNull(4) ? null : (decimal?)r.GetDecimal(4),
-                SmallPackPrice = r.IsDBNull(5) ? null : (decimal?)r.GetDecimal(5),
-                LargePackLabel = r.IsDBNull(6) ? "" : r.GetString(6),
-                LargePackWeightKg = r.IsDBNull(7) ? null : (decimal?)r.GetDecimal(7),
-                LargePackPrice = r.IsDBNull(8) ? null : (decimal?)r.GetDecimal(8),
-                Notes = r.IsDBNull(9) ? "" : r.GetString(9)
+                Id = r.GetInt64(idx["Id"]),
+                ProductName = r.GetString(idx["ProductName"]),
+                VariantText = GetString(r, idx, "VariantText"),
+                SmallPackLabel = GetString(r, idx, "SmallPackLabel"),
+                SmallPackWeightKg = GetDecimalNull(r, idx, "SmallPackWeightKg"),
+                SmallPackPrice = GetDecimalNull(r, idx, "SmallPackPrice"),
+                LargePackLabel = GetString(r, idx, "LargePackLabel"),
+                LargePackWeightKg = GetDecimalNull(r, idx, "LargePackWeightKg"),
+                LargePackPrice = GetDecimalNull(r, idx, "LargePackPrice"),
+                UnitPriceOverride = idx.ContainsKey("UnitPriceOverride") ? GetDecimalNull(r, idx, "UnitPriceOverride") : null,
+                Notes = GetString(r, idx, "Notes")
             };
+            return p;
+        }
+
+        private static string GetString(IDataReader r, System.Collections.Generic.Dictionary<string, int> idx, string name)
+        {
+            var i = idx[name];
+            return r.IsDBNull(i) ? "" : r.GetString(i);
+        }
+
+        private static decimal? GetDecimalNull(IDataReader r, System.Collections.Generic.Dictionary<string, int> idx, string name)
+        {
+            var i = idx[name];
+            return r.IsDBNull(i) ? null : (decimal?)r.GetDecimal(i);
         }
 
         public TemplateSettings GetTemplateSettings()

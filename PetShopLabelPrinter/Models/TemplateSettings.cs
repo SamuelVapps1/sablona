@@ -10,6 +10,7 @@ namespace PetShopLabelPrinter.Models
         // Fonts
         public string ProductNameFontFamily { get; set; } = "Arial";
         public double ProductNameFontSizePt { get; set; } = 14;
+        public double ProductNameMinFontSizePt { get; set; } = 8;
         public bool ProductNameBold { get; set; } = true;
 
         public string VariantTextFontFamily { get; set; } = "Arial";

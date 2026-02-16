@@ -11,12 +11,13 @@ namespace PetShopLabelPrinter.Models
         public string LargePackLabel { get; set; } = "";
         public decimal? LargePackWeightKg { get; set; }
         public decimal? LargePackPrice { get; set; }
+        public decimal? UnitPriceOverride { get; set; }
         public string Notes { get; set; } = "";
 
         /// <summary>
         /// Computed: LargePackPrice/LargePackWeightKg if available; else SmallPackPrice/SmallPackWeightKg; else null.
         /// </summary>
-        public decimal? UnitPricePerKg
+        public decimal? UnitPricePerKgComputed
         {
             get
             {
@@ -27,5 +28,10 @@ namespace PetShopLabelPrinter.Models
                 return null;
             }
         }
+
+        /// <summary>
+        /// Effective unit price: UnitPriceOverride if set; else computed from large pack (fallback small).
+        /// </summary>
+        public decimal? UnitPricePerKg => UnitPriceOverride ?? UnitPricePerKgComputed;
     }
 }

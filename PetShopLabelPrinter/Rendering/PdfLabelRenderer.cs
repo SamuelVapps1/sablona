@@ -1,14 +1,12 @@
 using System;
-using System.Globalization;
-using System.Windows;
 using PdfSharp.Drawing;
-using PdfSharp.Pdf;
 using PetShopLabelPrinter.Models;
 
 namespace PetShopLabelPrinter.Rendering
 {
     /// <summary>
-    /// Renders labels to PDF using PdfSharp. Uses mm directly (PdfSharp has XUnit.FromMillimeter).
+    /// Renders labels to PDF using PdfSharp. ProductName: max 2 lines, auto-reduce font.
+    /// VariantText: max 1 line, truncate with ellipsis.
     /// </summary>
     public class PdfLabelRenderer
     {
@@ -45,16 +43,38 @@ namespace PetShopLabelPrinter.Rendering
 
         private void DrawLeftColumn(XGraphics gfx, Product product, double x, double y, double w, double h)
         {
-            var pnFont = new XFont(_settings.ProductNameFontFamily, _settings.ProductNameFontSizePt,
-                _settings.ProductNameBold ? XFontStyle.Bold : XFontStyle.Regular);
-            gfx.DrawString(product.ProductName ?? "", pnFont, XBrushes.Black,
-                new XRect(x, y, w, h / 2), XStringFormats.TopLeft);
+            var maxTwoLinesHeight = h * 0.5;
+            var pnSize = _settings.ProductNameFontSizePt;
+            var minSize = Math.Max(6, _settings.ProductNameMinFontSizePt);
 
+            // ProductName: max 2 lines, auto-reduce font
+            var trySize = Math.Max(pnSize, minSize);
+            XFont pnFont = new XFont(_settings.ProductNameFontFamily, trySize,
+                _settings.ProductNameBold ? XFontStyle.Bold : XFontStyle.Regular);
+            var pnRect = new XRect(x, y, w, maxTwoLinesHeight);
+            var pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, pnRect, XStringFormats.TopLeft);
+            for (trySize = pnSize; trySize >= minSize; trySize -= 1)
+            {
+                pnFont = new XFont(_settings.ProductNameFontFamily, trySize,
+                    _settings.ProductNameBold ? XFontStyle.Bold : XFontStyle.Regular);
+                pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, pnRect, XStringFormats.TopLeft);
+                if (pnSizeMeasured.Height <= maxTwoLinesHeight + 0.5) break;
+            }
+            gfx.DrawString(product.ProductName ?? "", pnFont, XBrushes.Black, pnRect, XStringFormats.TopLeft);
+            y += pnSizeMeasured.Height + 2;
+
+            // VariantText: max 1 line, truncate with ellipsis
             var vtFont = new XFont(_settings.VariantTextFontFamily, _settings.VariantTextFontSizePt,
                 _settings.VariantTextBold ? XFontStyle.Bold : XFontStyle.Regular);
-            var pnHeight = gfx.MeasureString(product.ProductName ?? "", pnFont).Height;
-            gfx.DrawString(product.VariantText ?? "", vtFont, XBrushes.Black,
-                new XRect(x, y + pnHeight + 2, w, h - pnHeight - 2), XStringFormats.TopLeft);
+            var vtText = product.VariantText ?? "";
+            var vtMeasured = gfx.MeasureString(vtText, vtFont);
+            if (vtMeasured.Width > w)
+            {
+                while (vtText.Length > 1 && gfx.MeasureString(vtText + "...", vtFont).Width > w)
+                    vtText = vtText.Substring(0, vtText.Length - 1);
+                vtText = vtText + "...";
+            }
+            gfx.DrawString(vtText, vtFont, XBrushes.Black, new XRect(x, y, w, vtMeasured.Height), XStringFormats.TopLeft);
         }
 
         private void DrawRightColumn(XGraphics gfx, Product product, double x, double y, double w, double h)
@@ -77,7 +97,7 @@ namespace PetShopLabelPrinter.Rendering
             DrawSection(gfx, product.LargePackLabel ?? "", Formatting.FormatPrice(product.LargePackPrice),
                 x + pad, y + topH, w - pad * 2, midH);
 
-            // Bottom
+            // Bottom: UnitPricePerKg (override if set, else computed; 2 decimals, comma, €)
             var unitText = Formatting.FormatUnitPrice(product.UnitPricePerKg);
             var uFont = new XFont(_settings.UnitPriceSmallFontFamily, _settings.UnitPriceSmallFontSizePt,
                 _settings.UnitPriceSmallBold ? XFontStyle.Bold : XFontStyle.Regular);
