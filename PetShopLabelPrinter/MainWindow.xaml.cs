@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using PetShopLabelPrinter.Data;
 using PetShopLabelPrinter.Models;
@@ -179,7 +180,7 @@ namespace PetShopLabelPrinter
             if (HistoryList.SelectedItem is not PrintHistoryItem h) return;
             // Reprint: we don't store the actual queue, so we'd need to look up products by name
             // For MVP: just print/export again with the same product names - we'd need to search products
-            var names = h.ProductNames.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var names = h.ProductNames.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
             _queue.Clear();
             foreach (var name in names)
             {
@@ -255,20 +256,20 @@ namespace PetShopLabelPrinter
             if (_isAdminMode && TxtProductNameFont != null)
             {
                 s.ProductNameFontFamily = TxtProductNameFont?.Text ?? s.ProductNameFontFamily;
-                double.TryParse(TxtProductNameSize?.Text, out s.ProductNameFontSizePt);
-                double.TryParse(TxtProductNameMinSize?.Text, out s.ProductNameMinFontSizePt);
+                if (double.TryParse(TxtProductNameSize?.Text, out var parsed)) s.ProductNameFontSizePt = parsed;
+                if (double.TryParse(TxtProductNameMinSize?.Text, out parsed)) s.ProductNameMinFontSizePt = parsed;
                 s.ProductNameBold = ChkProductNameBold?.IsChecked == true;
                 s.VariantTextFontFamily = TxtVariantFont?.Text ?? s.VariantTextFontFamily;
-                double.TryParse(TxtVariantSize?.Text, out s.VariantTextFontSizePt);
+                if (double.TryParse(TxtVariantSize?.Text, out parsed)) s.VariantTextFontSizePt = parsed;
                 s.VariantTextBold = ChkVariantBold?.IsChecked == true;
                 s.PriceBigFontFamily = TxtPriceBigFont?.Text ?? s.PriceBigFontFamily;
-                double.TryParse(TxtPriceBigSize?.Text, out s.PriceBigFontSizePt);
+                if (double.TryParse(TxtPriceBigSize?.Text, out parsed)) s.PriceBigFontSizePt = parsed;
                 s.PriceBigBold = ChkPriceBigBold?.IsChecked == true;
-                double.TryParse(TxtLeftColMm?.Text, out s.LeftColWidthMm);
-                double.TryParse(TxtRightColMm?.Text, out s.RightColWidthMm);
-                double.TryParse(TxtTopMm?.Text, out s.RightTopHeightMm);
-                double.TryParse(TxtMidMm?.Text, out s.RightMiddleHeightMm);
-                double.TryParse(TxtBotMm?.Text, out s.RightBottomHeightMm);
+                if (double.TryParse(TxtLeftColMm?.Text, out parsed)) s.LeftColWidthMm = parsed;
+                if (double.TryParse(TxtRightColMm?.Text, out parsed)) s.RightColWidthMm = parsed;
+                if (double.TryParse(TxtTopMm?.Text, out parsed)) s.RightTopHeightMm = parsed;
+                if (double.TryParse(TxtMidMm?.Text, out parsed)) s.RightMiddleHeightMm = parsed;
+                if (double.TryParse(TxtBotMm?.Text, out parsed)) s.RightBottomHeightMm = parsed;
             }
             return s;
         }
@@ -315,23 +316,23 @@ namespace PetShopLabelPrinter
         {
             var s = _db.GetTemplateSettings();
             s.ProductNameFontFamily = TxtProductNameFont.Text;
-            double.TryParse(TxtProductNameSize.Text, out s.ProductNameFontSizePt);
-            double.TryParse(TxtProductNameMinSize.Text, out s.ProductNameMinFontSizePt);
+            if (double.TryParse(TxtProductNameSize.Text, out var parsed)) s.ProductNameFontSizePt = parsed;
+            if (double.TryParse(TxtProductNameMinSize.Text, out parsed)) s.ProductNameMinFontSizePt = parsed;
             s.ProductNameBold = ChkProductNameBold.IsChecked == true;
             s.VariantTextFontFamily = TxtVariantFont.Text;
-            double.TryParse(TxtVariantSize.Text, out s.VariantTextFontSizePt);
+            if (double.TryParse(TxtVariantSize.Text, out parsed)) s.VariantTextFontSizePt = parsed;
             s.VariantTextBold = ChkVariantBold.IsChecked == true;
             s.PriceBigFontFamily = TxtPriceBigFont.Text;
-            double.TryParse(TxtPriceBigSize.Text, out s.PriceBigFontSizePt);
+            if (double.TryParse(TxtPriceBigSize.Text, out parsed)) s.PriceBigFontSizePt = parsed;
             s.PriceBigBold = ChkPriceBigBold.IsChecked == true;
-            double.TryParse(TxtLeftColMm.Text, out s.LeftColWidthMm);
-            double.TryParse(TxtRightColMm.Text, out s.RightColWidthMm);
-            double.TryParse(TxtTopMm.Text, out s.RightTopHeightMm);
-            double.TryParse(TxtMidMm.Text, out s.RightMiddleHeightMm);
-            double.TryParse(TxtBotMm.Text, out s.RightBottomHeightMm);
+            if (double.TryParse(TxtLeftColMm.Text, out parsed)) s.LeftColWidthMm = parsed;
+            if (double.TryParse(TxtRightColMm.Text, out parsed)) s.RightColWidthMm = parsed;
+            if (double.TryParse(TxtTopMm.Text, out parsed)) s.RightTopHeightMm = parsed;
+            if (double.TryParse(TxtMidMm.Text, out parsed)) s.RightMiddleHeightMm = parsed;
+            if (double.TryParse(TxtBotMm.Text, out parsed)) s.RightBottomHeightMm = parsed;
             s.CropMarksEnabled = ChkCropMarks.IsChecked == true;
-            double.TryParse(TxtOffsetX.Text, out s.OffsetXMm);
-            double.TryParse(TxtOffsetY.Text, out s.OffsetYMm);
+            if (double.TryParse(TxtOffsetX.Text, out parsed)) s.OffsetXMm = parsed;
+            if (double.TryParse(TxtOffsetY.Text, out parsed)) s.OffsetYMm = parsed;
 
             _db.SaveTemplateSettings(s);
             RefreshPreview();

@@ -50,13 +50,13 @@ namespace PetShopLabelPrinter.Rendering
             // ProductName: max 2 lines, auto-reduce font
             var trySize = Math.Max(pnSize, minSize);
             XFont pnFont = new XFont(_settings.ProductNameFontFamily, trySize,
-                _settings.ProductNameBold ? XFontStyle.Bold : XFontStyle.Regular);
+                _settings.ProductNameBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
             var pnRect = new XRect(x, y, w, maxTwoLinesHeight);
             var pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, pnRect, XStringFormats.TopLeft);
             for (trySize = pnSize; trySize >= minSize; trySize -= 1)
             {
                 pnFont = new XFont(_settings.ProductNameFontFamily, trySize,
-                    _settings.ProductNameBold ? XFontStyle.Bold : XFontStyle.Regular);
+                    _settings.ProductNameBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
                 pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, pnRect, XStringFormats.TopLeft);
                 if (pnSizeMeasured.Height <= maxTwoLinesHeight + 0.5) break;
             }
@@ -65,7 +65,7 @@ namespace PetShopLabelPrinter.Rendering
 
             // VariantText: max 1 line, truncate with ellipsis
             var vtFont = new XFont(_settings.VariantTextFontFamily, _settings.VariantTextFontSizePt,
-                _settings.VariantTextBold ? XFontStyle.Bold : XFontStyle.Regular);
+                _settings.VariantTextBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
             var vtText = product.VariantText ?? "";
             var vtMeasured = gfx.MeasureString(vtText, vtFont);
             if (vtMeasured.Width > w)
@@ -100,7 +100,7 @@ namespace PetShopLabelPrinter.Rendering
             // Bottom: UnitPricePerKg (override if set, else computed; 2 decimals, comma, €)
             var unitText = Formatting.FormatUnitPrice(product.UnitPricePerKg);
             var uFont = new XFont(_settings.UnitPriceSmallFontFamily, _settings.UnitPriceSmallFontSizePt,
-                _settings.UnitPriceSmallBold ? XFontStyle.Bold : XFontStyle.Regular);
+                _settings.UnitPriceSmallBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
             var format = XStringFormats.Center;
             gfx.DrawString(unitText, uFont, XBrushes.Black,
                 new XRect(x + pad, y + topH + midH, w - pad * 2, botH), format);
@@ -109,9 +109,9 @@ namespace PetShopLabelPrinter.Rendering
         private void DrawSection(XGraphics gfx, string label, string price, double x, double y, double w, double h)
         {
             var labelFont = new XFont(_settings.PackLabelSmallFontFamily, _settings.PackLabelSmallFontSizePt,
-                _settings.PackLabelSmallBold ? XFontStyle.Bold : XFontStyle.Regular);
+                _settings.PackLabelSmallBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
             var priceFont = new XFont(_settings.PriceBigFontFamily, _settings.PriceBigFontSizePt,
-                _settings.PriceBigBold ? XFontStyle.Bold : XFontStyle.Regular);
+                _settings.PriceBigBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
 
             var labelFormat = _settings.PackLabelSmallAlign == 2 ? XStringFormats.TopRight
                 : _settings.PackLabelSmallAlign == 1 ? XStringFormats.TopCenter : XStringFormats.TopLeft;
