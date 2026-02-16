@@ -39,7 +39,6 @@ namespace PetShopLabelPrinter.Services
                 page.Height = a4H;
 
                 using var gfx = XGraphics.FromPdfPage(page);
-                gfx.PageUnit = XUnit.Millimeter;
 
                 foreach (var pos in positions)
                 {
@@ -55,7 +54,8 @@ namespace PetShopLabelPrinter.Services
             var path = suggestedPath ?? Path.Combine(
                 Path.GetTempPath(),
                 $"Labels_{System.DateTime.Now:yyyyMMdd_HHmmss}.pdf");
-            doc.Save(path, false);
+            using (var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                doc.Save(stream, false);
             return path;
         }
     }

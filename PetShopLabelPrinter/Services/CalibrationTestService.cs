@@ -12,6 +12,8 @@ namespace PetShopLabelPrinter.Services
     /// </summary>
     public class CalibrationTestService
     {
+        private static double MmToPt(double mm) => XUnit.FromMillimeter(mm).Point;
+
         private readonly Database _db;
 
         public CalibrationTestService(Database db)
@@ -30,44 +32,46 @@ namespace PetShopLabelPrinter.Services
             page.Height = XUnit.FromMillimeter(A4Layout.A4HeightMm);
 
             using var gfx = XGraphics.FromPdfPage(page);
-            gfx.PageUnit = XUnit.Millimeter;
 
             var pen = new XPen(XColors.Black, 0.2);
 
-            // Ruler: horizontal lines every 10mm
+            // Ruler: horizontal lines every 10mm (coordinates in points)
             for (var y = 0.0; y <= A4Layout.A4HeightMm; y += 10)
             {
-                gfx.DrawLine(pen, 0, y, 5, y);
+                var yPt = MmToPt(y);
+                gfx.DrawLine(pen, 0, yPt, MmToPt(5), yPt);
                 if (y % 50 == 0)
-                    gfx.DrawString($"{y}mm", new XFont("Arial", 6), XBrushes.Black, 0, y - 2);
+                    gfx.DrawString($"{y}mm", new XFont("Arial", 6), XBrushes.Black, 0, yPt - 2, XStringFormats.Default);
             }
 
-            // Ruler: vertical lines every 10mm
             for (var x = 0.0; x <= A4Layout.A4WidthMm; x += 10)
             {
-                gfx.DrawLine(pen, x, 0, x, 5);
+                var xPt = MmToPt(x);
+                gfx.DrawLine(pen, xPt, 0, xPt, MmToPt(5));
                 if (x % 50 == 0)
-                    gfx.DrawString($"{x}mm", new XFont("Arial", 6), XBrushes.Black, x - 5, 0);
+                    gfx.DrawString($"{x}mm", new XFont("Arial", 6), XBrushes.Black, xPt - MmToPt(5), 0, XStringFormats.Default);
             }
 
-            // Grid at 10mm
             pen = new XPen(XColors.LightGray, 0.1);
+            var a4Wpt = MmToPt(A4Layout.A4WidthMm);
+            var a4Hpt = MmToPt(A4Layout.A4HeightMm);
             for (var x = 0.0; x <= A4Layout.A4WidthMm; x += 10)
-                gfx.DrawLine(pen, x, 0, x, A4Layout.A4HeightMm);
+                gfx.DrawLine(pen, MmToPt(x), 0, MmToPt(x), a4Hpt);
             for (var y = 0.0; y <= A4Layout.A4HeightMm; y += 10)
-                gfx.DrawLine(pen, 0, y, A4Layout.A4WidthMm, y);
+                gfx.DrawLine(pen, 0, MmToPt(y), a4Wpt, MmToPt(y));
 
-            // One label outline at default position (with calibration offset applied)
-            var labelX = A4Layout.MarginLeftMm + settings.OffsetXMm;
-            var labelY = A4Layout.MarginTopMm + settings.OffsetYMm;
+            var labelX = MmToPt(A4Layout.MarginLeftMm + settings.OffsetXMm);
+            var labelY = MmToPt(A4Layout.MarginTopMm + settings.OffsetYMm);
+            var labelW = MmToPt(LabelRenderer.LabelWidthMm);
+            var labelH = MmToPt(LabelRenderer.LabelHeightMm);
             var labelPen = new XPen(XColors.Black, 0.5);
-            gfx.DrawRectangle(labelPen, labelX, labelY,
-                LabelRenderer.LabelWidthMm, LabelRenderer.LabelHeightMm);
+            gfx.DrawRectangle(labelPen, labelX, labelY, labelW, labelH);
             gfx.DrawString("150 x 38 mm label outline", new XFont("Arial", 8), XBrushes.Black,
-                labelX, labelY + LabelRenderer.LabelHeightMm / 2 - 2, XStringFormats.Center);
+                labelX, labelY + labelH / 2 - 2, XStringFormats.Center);
 
             var path = Path.Combine(Path.GetTempPath(), $"CalibrationTest_{System.DateTime.Now:yyyyMMdd_HHmmss}.pdf");
-            doc.Save(path, false);
+            using (var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
+                doc.Save(stream, false);
             return path;
         }
     }

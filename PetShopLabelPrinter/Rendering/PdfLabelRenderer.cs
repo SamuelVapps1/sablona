@@ -10,6 +10,8 @@ namespace PetShopLabelPrinter.Rendering
     /// </summary>
     public class PdfLabelRenderer
     {
+        private static double MmToPt(double mm) => XUnit.FromMillimeter(mm).Point;
+
         private readonly TemplateSettings _settings;
 
         public PdfLabelRenderer(TemplateSettings settings)
@@ -24,10 +26,9 @@ namespace PetShopLabelPrinter.Rendering
             var w = LabelRenderer.LabelWidthMm;
             var h = LabelRenderer.LabelHeightMm;
 
-            // Outer border
-            var pen = new XPen(XColors.Black, _settings.LineThicknessMm);
-            gfx.DrawRectangle(pen, XUnit.FromMillimeter(ox), XUnit.FromMillimeter(oy),
-                XUnit.FromMillimeter(w), XUnit.FromMillimeter(h));
+            // Outer border (points)
+            var pen = new XPen(XColors.Black, MmToPt(_settings.LineThicknessMm));
+            gfx.DrawRectangle(pen, MmToPt(ox), MmToPt(oy), MmToPt(w), MmToPt(h));
 
             var pad = _settings.PaddingMm;
             var leftW = _settings.LeftColWidthMm;
@@ -43,38 +44,39 @@ namespace PetShopLabelPrinter.Rendering
 
         private void DrawLeftColumn(XGraphics gfx, Product product, double x, double y, double w, double h)
         {
-            var maxTwoLinesHeight = h * 0.5;
+            var maxTwoLinesHeightPt = MmToPt(h * 0.5);
             var pnSize = _settings.ProductNameFontSizePt;
             var minSize = Math.Max(6, _settings.ProductNameMinFontSizePt);
+            var xPt = MmToPt(x); var yPt = MmToPt(y); var wPt = MmToPt(w);
 
             // ProductName: max 2 lines, auto-reduce font
             var trySize = Math.Max(pnSize, minSize);
             XFont pnFont = new XFont(_settings.ProductNameFontFamily, trySize,
                 _settings.ProductNameBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
-            var pnRect = new XRect(x, y, w, maxTwoLinesHeight);
-            var pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, pnRect, XStringFormats.TopLeft);
+            var pnRect = new XRect(xPt, yPt, wPt, maxTwoLinesHeightPt);
+            var pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, XStringFormats.TopLeft);
             for (trySize = pnSize; trySize >= minSize; trySize -= 1)
             {
                 pnFont = new XFont(_settings.ProductNameFontFamily, trySize,
                     _settings.ProductNameBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
-                pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, pnRect, XStringFormats.TopLeft);
-                if (pnSizeMeasured.Height <= maxTwoLinesHeight + 0.5) break;
+                pnSizeMeasured = gfx.MeasureString(product.ProductName ?? "", pnFont, XStringFormats.TopLeft);
+                if (pnSizeMeasured.Height <= maxTwoLinesHeightPt + 0.5) break;
             }
             gfx.DrawString(product.ProductName ?? "", pnFont, XBrushes.Black, pnRect, XStringFormats.TopLeft);
-            y += pnSizeMeasured.Height + 2;
+            yPt += pnSizeMeasured.Height + 2;
 
             // VariantText: max 1 line, truncate with ellipsis
             var vtFont = new XFont(_settings.VariantTextFontFamily, _settings.VariantTextFontSizePt,
                 _settings.VariantTextBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
             var vtText = product.VariantText ?? "";
-            var vtMeasured = gfx.MeasureString(vtText, vtFont);
-            if (vtMeasured.Width > w)
+            var vtMeasured = gfx.MeasureString(vtText, vtFont, XStringFormats.TopLeft);
+            if (vtMeasured.Width > wPt)
             {
-                while (vtText.Length > 1 && gfx.MeasureString(vtText + "...", vtFont).Width > w)
+                while (vtText.Length > 1 && gfx.MeasureString(vtText + "...", vtFont, XStringFormats.TopLeft).Width > wPt)
                     vtText = vtText.Substring(0, vtText.Length - 1);
                 vtText = vtText + "...";
             }
-            gfx.DrawString(vtText, vtFont, XBrushes.Black, new XRect(x, y, w, vtMeasured.Height), XStringFormats.TopLeft);
+            gfx.DrawString(vtText, vtFont, XBrushes.Black, new XRect(xPt, yPt, wPt, vtMeasured.Height), XStringFormats.TopLeft);
         }
 
         private void DrawRightColumn(XGraphics gfx, Product product, double x, double y, double w, double h)
@@ -82,28 +84,24 @@ namespace PetShopLabelPrinter.Rendering
             var topH = _settings.RightTopHeightMm;
             var midH = _settings.RightMiddleHeightMm;
             var botH = _settings.RightBottomHeightMm;
-            var pen = new XPen(XColors.Black, _settings.LineThicknessMm);
+            var pen = new XPen(XColors.Black, MmToPt(_settings.LineThicknessMm));
+            var xPt = MmToPt(x); var yPt = MmToPt(y); var wPt = MmToPt(w);
 
-            gfx.DrawLine(pen, x, y + topH, x + w, y + topH);
-            gfx.DrawLine(pen, x, y + topH + midH, x + w, y + topH + midH);
+            gfx.DrawLine(pen, xPt, yPt + MmToPt(topH), xPt + wPt, yPt + MmToPt(topH));
+            gfx.DrawLine(pen, xPt, yPt + MmToPt(topH + midH), xPt + wPt, yPt + MmToPt(topH + midH));
 
             var pad = _settings.PaddingMm;
 
-            // Top
             DrawSection(gfx, product.SmallPackLabel ?? "", Formatting.FormatPrice(product.SmallPackPrice),
                 x + pad, y, w - pad * 2, topH);
-
-            // Middle
             DrawSection(gfx, product.LargePackLabel ?? "", Formatting.FormatPrice(product.LargePackPrice),
                 x + pad, y + topH, w - pad * 2, midH);
 
-            // Bottom: UnitPricePerKg (override if set, else computed; 2 decimals, comma, €)
             var unitText = Formatting.FormatUnitPrice(product.UnitPricePerKg);
             var uFont = new XFont(_settings.UnitPriceSmallFontFamily, _settings.UnitPriceSmallFontSizePt,
                 _settings.UnitPriceSmallBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
-            var format = XStringFormats.Center;
             gfx.DrawString(unitText, uFont, XBrushes.Black,
-                new XRect(x + pad, y + topH + midH, w - pad * 2, botH), format);
+                new XRect(MmToPt(x + pad), MmToPt(y + topH + midH), MmToPt(w - pad * 2), MmToPt(botH)), XStringFormats.Center);
         }
 
         private void DrawSection(XGraphics gfx, string label, string price, double x, double y, double w, double h)
@@ -118,30 +116,28 @@ namespace PetShopLabelPrinter.Rendering
             var priceFormat = _settings.PriceBigAlign == 2 ? XStringFormats.TopRight
                 : _settings.PriceBigAlign == 1 ? XStringFormats.TopCenter : XStringFormats.TopLeft;
 
-            gfx.DrawString(label, labelFont, XBrushes.Black, new XRect(x, y, w, h / 2), labelFormat);
-            gfx.DrawString(price, priceFont, XBrushes.Black, new XRect(x, y + h / 2, w, h / 2), priceFormat);
+            var xPt = MmToPt(x); var yPt = MmToPt(y); var wPt = MmToPt(w); var hPt = MmToPt(h);
+            gfx.DrawString(label, labelFont, XBrushes.Black, new XRect(xPt, yPt, wPt, hPt / 2), labelFormat);
+            gfx.DrawString(price, priceFont, XBrushes.Black, new XRect(xPt, yPt + hPt / 2, wPt, hPt / 2), priceFormat);
         }
 
         public void DrawCropMarks(XGraphics gfx, double offsetXMm, double offsetYMm, double cropLenMm = 3)
         {
-            var ox = offsetXMm + _settings.OffsetXMm;
-            var oy = offsetYMm + _settings.OffsetYMm;
-            var w = LabelRenderer.LabelWidthMm;
-            var h = LabelRenderer.LabelHeightMm;
+            var ox = MmToPt(offsetXMm + _settings.OffsetXMm);
+            var oy = MmToPt(offsetYMm + _settings.OffsetYMm);
+            var w = MmToPt(LabelRenderer.LabelWidthMm);
+            var h = MmToPt(LabelRenderer.LabelHeightMm);
+            var cropLen = MmToPt(cropLenMm);
             var pen = new XPen(XColors.Black, 0.2);
 
-            // Top-left
-            gfx.DrawLine(pen, ox, oy, ox + cropLenMm, oy);
-            gfx.DrawLine(pen, ox, oy, ox, oy + cropLenMm);
-            // Top-right
-            gfx.DrawLine(pen, ox + w - cropLenMm, oy, ox + w, oy);
-            gfx.DrawLine(pen, ox + w, oy, ox + w, oy + cropLenMm);
-            // Bottom-left
-            gfx.DrawLine(pen, ox, oy + h - cropLenMm, ox, oy + h);
-            gfx.DrawLine(pen, ox, oy + h, ox + cropLenMm, oy + h);
-            // Bottom-right
-            gfx.DrawLine(pen, ox + w - cropLenMm, oy + h, ox + w, oy + h);
-            gfx.DrawLine(pen, ox + w, oy + h - cropLenMm, ox + w, oy + h);
+            gfx.DrawLine(pen, ox, oy, ox + cropLen, oy);
+            gfx.DrawLine(pen, ox, oy, ox, oy + cropLen);
+            gfx.DrawLine(pen, ox + w - cropLen, oy, ox + w, oy);
+            gfx.DrawLine(pen, ox + w, oy, ox + w, oy + cropLen);
+            gfx.DrawLine(pen, ox, oy + h - cropLen, ox, oy + h);
+            gfx.DrawLine(pen, ox, oy + h, ox + cropLen, oy + h);
+            gfx.DrawLine(pen, ox + w - cropLen, oy + h, ox + w, oy + h);
+            gfx.DrawLine(pen, ox + w, oy + h - cropLen, ox + w, oy + h);
         }
     }
 }

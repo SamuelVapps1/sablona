@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PetShopLabelPrinter")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b3449e53387d843e55c95d7dce3c3d8372f0c921")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1fe94739107a2323d7549b98d9addb21db459c06")]
 [assembly: System.Reflection.AssemblyProductAttribute("PetShopLabelPrinter")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PetShopLabelPrinter")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
