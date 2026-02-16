@@ -1,0 +1,14 @@
+<Window x:Class="PetShopLabelPrinter.AdminPinDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Admin PIN" Height="150" Width="300" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <StackPanel Margin="16">
+        <TextBlock Text="Zadajte Admin PIN:" Margin="0,0,0,8"/>
+        <PasswordBox x:Name="TxtPin" PasswordChanged="TxtPin_PasswordChanged" Margin="0,0,0,16"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Click="BtnOk_Click" Content="OK" IsDefault="True" Padding="12,6" Margin="0,0,8,0"/>
+            <Button Click="BtnCancel_Click" Content="Zrušiť" IsCancel="True" Padding="12,6"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

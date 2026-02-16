@@ -1,0 +1,53 @@
+<Window x:Class="PetShopLabelPrinter.ProductEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Produkt" Height="480" Width="420" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="16">
+            <TextBlock Text="Názov produktu" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtProductName" Margin="0,0,0,12" Padding="6,4"/>
+
+            <TextBlock Text="Varianta" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtVariantText" Margin="0,0,0,12" Padding="6,4"/>
+
+            <TextBlock Text="Malé balenie (napr. Balenie 1 kg)" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtSmallPackLabel" Margin="0,0,0,4" Padding="6,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Hmotnosť (kg):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="TxtSmallPackWeight" Grid.Column="1" Margin="0,0,16,0" Padding="6,4"/>
+                <TextBlock Text="Cena:" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="TxtSmallPackPrice" Grid.Column="3" Padding="6,4"/>
+            </Grid>
+
+            <TextBlock Text="Veľké balenie (napr. Balenie 17 kg)" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtLargePackLabel" Margin="0,0,0,4" Padding="6,4"/>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Hmotnosť (kg):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="TxtLargePackWeight" Grid.Column="1" Margin="0,0,16,0" Padding="6,4"/>
+                <TextBlock Text="Cena:" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="TxtLargePackPrice" Grid.Column="3" Padding="6,4"/>
+            </Grid>
+
+            <TextBlock Text="Poznámky" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtNotes" Margin="0,0,0,16" Padding="6,4" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto"/>
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Click="BtnSave_Click" Content="Uložiť" IsDefault="True" Padding="16,8" Margin="0,0,8,0"/>
+                <Button Click="BtnCancel_Click" Content="Zrušiť" IsCancel="True" Padding="16,8"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

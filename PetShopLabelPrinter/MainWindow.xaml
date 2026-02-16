@@ -1,0 +1,188 @@
+<Window x:Class="PetShopLabelPrinter.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pet Shop Label Printer" Height="700" Width="950"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8">
+            <Button x:Name="BtnUserMode" Content="Používateľ" Click="BtnUserMode_Click" Padding="12,6" Margin="0,0,4,0"/>
+            <Button x:Name="BtnAdminMode" Content="Admin" Click="BtnAdminMode_Click" Padding="12,6" Margin="0,0,4,0"/>
+            <TextBlock x:Name="TxtMode" VerticalAlignment="Center" Margin="8,0" FontWeight="Bold"/>
+        </StackPanel>
+
+        <!-- User Mode Content -->
+        <Grid x:Name="UserPanel" Grid.Row="1" Visibility="Visible">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="280"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Search + Product List -->
+            <DockPanel Grid.Column="0" Margin="8">
+                <TextBox x:Name="TxtSearch" DockPanel.Dock="Top" Margin="0,0,0,4"
+                         TextChanged="TxtSearch_TextChanged" KeyDown="TxtSearch_KeyDown"
+                         Padding="6,4" FontSize="14"/>
+                <DataGrid x:Name="ProductGrid" ItemsSource="{Binding Products}"
+                          SelectionMode="Single" SelectionChanged="ProductGrid_SelectionChanged"
+                          AutoGenerateColumns="False" IsReadOnly="True" HeadersVisibility="Column"
+                          CanUserAddRows="False" CanUserDeleteRows="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Produkt" Binding="{Binding ProductName}" Width="*"/>
+                        <DataGridTextColumn Header="Varianta" Binding="{Binding VariantText}" Width="120"/>
+                        <DataGridTextColumn Header="Cena" Binding="{Binding LargePackPrice, StringFormat=N2}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DockPanel>
+
+            <!-- Middle: Add to queue -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8">
+                <Button x:Name="BtnAddToQueue" Content="→ Pridať" Click="BtnAddToQueue_Click" Padding="12,8" Margin="0,4"/>
+                <TextBox x:Name="TxtQuantity" Text="1" Width="60" Margin="0,4" HorizontalAlignment="Center"/>
+                <TextBlock Text="Počet" HorizontalAlignment="Center" Margin="0,2"/>
+            </StackPanel>
+
+            <!-- Right: Queue + Actions + History -->
+            <DockPanel Grid.Column="2" Margin="8">
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+                    <Button x:Name="BtnPrint" Content="Tlačiť A4" Click="BtnPrint_Click" Padding="12,8" Margin="0,4"/>
+                    <Button x:Name="BtnExportPdf" Content="Export PDF" Click="BtnExportPdf_Click" Padding="12,8" Margin="0,4"/>
+                </StackPanel>
+                <TabControl>
+                    <TabItem Header="Fronta">
+                        <DockPanel>
+                            <Button x:Name="BtnRemoveFromQueue" Content="Odstrániť z fronty" Click="BtnRemoveFromQueue_Click" Padding="8,4" Margin="0,0,0,4" DockPanel.Dock="Bottom"/>
+                            <DataGrid x:Name="QueueGrid" ItemsSource="{Binding Queue}"
+                                      AutoGenerateColumns="False" IsReadOnly="True"
+                                      CanUserAddRows="False" CanUserDeleteRows="False"
+                                      SelectionChanged="QueueGrid_SelectionChanged">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Produkt" Binding="{Binding Product.ProductName}" Width="*"/>
+                                    <DataGridTextColumn Header="ks" Binding="{Binding Quantity}" Width="40"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </TabItem>
+                    <TabItem Header="História">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button x:Name="BtnReprint" Content="Znovu tlačiť" Click="BtnReprint_Click" Padding="8,4" Margin="0,0,4,0"/>
+                                <Button x:Name="BtnOpenPdf" Content="Otvoriť PDF" Click="BtnOpenPdf_Click" Padding="8,4"/>
+                            </StackPanel>
+                            <ListBox x:Name="HistoryList" SelectionChanged="HistoryList_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding ProductNames}" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding PrintedAt, StringFormat='{}{0:g}'}" FontSize="10" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </DockPanel>
+                    </TabItem>
+                </TabControl>
+            </DockPanel>
+        </Grid>
+
+        <!-- Admin Mode Content -->
+        <ScrollViewer x:Name="AdminPanel" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="16">
+                <GroupBox Header="Šablóna - písmo a rozloženie" Padding="12" Margin="0,0,0,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="ProductName font / veľkosť"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TxtProductNameFont" Width="120" Margin="0,2" TextChanged="AdminSetting_Changed"/>
+                                <TextBox x:Name="TxtProductNameSize" Width="40" Margin="4,2" TextChanged="AdminSetting_Changed"/>
+                                <CheckBox x:Name="ChkProductNameBold" Content="Bold" VerticalAlignment="Center" Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
+                            </StackPanel>
+                            <TextBlock Text="VariantText font / veľkosť" Margin="0,8,0,0"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TxtVariantFont" Width="120" Margin="0,2" TextChanged="AdminSetting_Changed"/>
+                                <TextBox x:Name="TxtVariantSize" Width="40" Margin="4,2" TextChanged="AdminSetting_Changed"/>
+                                <CheckBox x:Name="ChkVariantBold" Content="Bold" VerticalAlignment="Center" Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
+                            </StackPanel>
+                            <TextBlock Text="PriceBig font / veľkosť" Margin="0,8,0,0"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TxtPriceBigFont" Width="120" Margin="0,2" TextChanged="AdminSetting_Changed"/>
+                                <TextBox x:Name="TxtPriceBigSize" Width="40" Margin="4,2" TextChanged="AdminSetting_Changed"/>
+                                <CheckBox x:Name="ChkPriceBigBold" Content="Bold" VerticalAlignment="Center" Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="Ľavý stĺpec šírka (mm)"/>
+                            <TextBox x:Name="TxtLeftColMm" Width="80" Margin="0,2"/>
+                            <TextBlock Text="Pravý stĺpec šírka (mm)" Margin="0,8,0,0"/>
+                            <TextBox x:Name="TxtRightColMm" Width="80" Margin="0,2"/>
+                            <TextBlock Text="Top/Mid/Bot výška (mm)" Margin="0,8,0,0"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TxtTopMm" Width="50" Margin="0,2"/>
+                                <TextBox x:Name="TxtMidMm" Width="50" Margin="4,2"/>
+                                <TextBox x:Name="TxtBotMm" Width="50" Margin="4,2"/>
+                            </StackPanel>
+                            <CheckBox x:Name="ChkCropMarks" Content="Crop marks" Margin="0,8,0,0"/>
+                            <Button x:Name="BtnRefreshPreview" Content="Obnoviť náhľad" Click="BtnRefreshPreview_Click" Margin="0,12,0,0" Padding="8,4"/>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
+
+                <GroupBox Header="Kalibrácia" Padding="12" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="X offset (mm)" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox x:Name="TxtOffsetX" Width="60" Margin="0,0,16,0"/>
+                        <TextBlock Text="Y offset (mm)" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox x:Name="TxtOffsetY" Width="60" Margin="0,0,16,0"/>
+                        <Button x:Name="BtnSaveSettings" Content="Uložiť" Click="BtnSaveSettings_Click" Padding="12,6"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Tlačiareň" Padding="12" Margin="0,0,0,8">
+                    <StackPanel>
+                        <ComboBox x:Name="CmbPrinter" DisplayMemberPath="." MinWidth="200" Margin="0,0,0,8"/>
+                        <Button x:Name="BtnSavePrinter" Content="Uložiť tlačiareň" Click="BtnSavePrinter_Click" Padding="12,6"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Produkty" Padding="12" Margin="0,0,0,8">
+                    <StackPanel>
+                        <Button x:Name="BtnAddProduct" Content="Pridať produkt" Click="BtnAddProduct_Click" Padding="12,6" Margin="0,0,0,8" HorizontalAlignment="Left"/>
+                        <DataGrid x:Name="AdminProductGrid" AutoGenerateColumns="False"
+                                  CanUserAddRows="False" CanUserDeleteRows="False" IsReadOnly="True"
+                                  SelectionMode="Single" SelectionChanged="AdminProductGrid_SelectionChanged">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Produkt" Binding="{Binding ProductName}" Width="*"/>
+                                <DataGridTextColumn Header="Varianta" Binding="{Binding VariantText}" Width="100"/>
+                                <DataGridTextColumn Header="Veľké bal. cena" Binding="{Binding LargePackPrice, StringFormat=N2}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <Button x:Name="BtnEditProduct" Content="Upraviť" Click="BtnEditProduct_Click" Padding="8,4" Margin="0,0,4,0"/>
+                            <Button x:Name="BtnDeleteProduct" Content="Zmazať" Click="BtnDeleteProduct_Click" Padding="8,4"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <GroupBox Header="Testovacia stránka" Padding="12" Margin="0,0,0,8">
+                    <Button x:Name="BtnTestPage" Content="Generovať PDF test" Click="BtnTestPage_Click" Padding="12,6"/>
+                </GroupBox>
+
+                <Border x:Name="PreviewBorder" BorderBrush="Gray" BorderThickness="1" Padding="8" Margin="0,8">
+                    <Viewbox x:Name="PreviewViewbox" Stretch="Uniform">
+                        <Canvas x:Name="PreviewCanvas" Width="300" Height="76" Background="White"/>
+                    </Viewbox>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</Window>
