@@ -1,6 +1,6 @@
 # Pet Shop Label Printer
 
-MVP desktop label printing tool for pet shops. Generates A4 sheets with multiple 150×38 mm labels, supports PDF export and silent printing.
+MVP desktop label printing tool for pet shops. Main flow is an inline-edit table where staff edits labels directly and prints/exports only selected rows.
 
 ## Requirements
 
@@ -86,26 +86,34 @@ Or from Visual Studio: F5 (Debug) or Ctrl+F5 (Run without debugging).
 ## First-Time Setup
 
 1. **Admin mode:** Click "Admin", enter PIN `1234` (change in code for production).
-2. **Printer:** Select your label printer and click "Uložiť tlačiareň".
-3. **Calibration:** Adjust X/Y offset if needed, generate test PDF to verify.
-4. **Products:** Add products in Admin mode (sample products are seeded on first run).
+2. **Printer:** Select a Windows printer and click "Uložiť tlačiareň".
+3. **Calibration:** Use X/Y offset (mm) and test page buttons.
 
 ## Usage
 
-### User Mode
+### User Flow (Store Staff)
 
-- **Search** products in the search box (keyboard-friendly).
-- **Add to queue:** Select product, set quantity, click "→ Pridať".
-- **Print A4:** Silent print to the selected printer.
-- **Export PDF:** Save A4 PDF to a file.
-- **History:** Reprint or open previously saved PDFs.
+1. Edit labels directly in the main table (no edit dialog).
+2. Choose what to process by either:
+   - checking **Tlačiť?** in rows, or
+   - selecting rows directly.
+3. Set row **Počet** (quantity, default 1).
+4. Click:
+   - **Tlačiť A4 (vybrané)** to print directly to Windows printer (no PDF save),
+   - **Export PDF (vybrané)** to explicitly save via `SaveFileDialog`.
+5. **Vyčistiť výber/frontu** clears current print selection.
 
-### Admin Mode
+### Admin Flow
 
-- **Template settings:** Font family, sizes, bold, column widths, section heights.
-- **Calibration:** X/Y offset in mm, test page generator.
-- **Printer:** Select and save default printer.
-- **Products:** Add, edit, delete products.
+- Controls only layout/calibration/printer:
+  - installed system fonts (dropdown),
+  - font sizes and section widths/heights in mm,
+  - crop marks,
+  - global calibration X/Y offset.
+- Live preview always reflects currently selected table row.
+- **Generovať PDF test** opens calibration test PDF.
+- **Tlačiť test** sends calibration test to configured printer.
+- **Vymazať históriu** clears grouped print/export job history.
 
 ## Label Layout
 
@@ -116,9 +124,10 @@ Or from Visual Studio: F5 (Debug) or Ctrl+F5 (Run without debugging).
 
 ## Validation Checklist
 
-- [x] Add/edit product, queue 20 labels, export PDF, print A4
-- [x] UnitPricePerKg computed (LargePackPrice / LargePackWeightKg, fallback to small pack)
-- [x] Admin can change font sizes and re-render preview instantly
+- [x] Inline grid editing for label fields (including editable unit price text)
+- [x] Print pipeline is separated from export pipeline
+- [x] Print/export uses only current row selection and row quantity
+- [x] Admin live preview updates for current selected row
 
 ## License
 

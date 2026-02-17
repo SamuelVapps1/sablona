@@ -50,27 +50,28 @@ namespace PetShopLabelPrinter.Services
         {
             if (queue == null || queue.Count == 0) return false;
 
-            var printerName = GetDefaultPrinter();
-            if (string.IsNullOrEmpty(printerName))
-            {
-                MessageBox.Show("Vyberte tlačiareň v režime Admin.", "Chýba tlačiareň", MessageBoxButton.OK, MessageBoxImage.Warning);
-                return false;
-            }
-
             try
             {
-                var printDialog = new PrintDialog();
                 var server = new LocalPrintServer();
                 var queues = server.GetPrintQueues();
+                var printerName = GetDefaultPrinter();
                 PrintQueue? pq = null;
-                foreach (var q in queues)
+
+                if (!string.IsNullOrWhiteSpace(printerName))
                 {
-                    if (q.Name == printerName) { pq = q; break; }
+                    foreach (var q in queues)
+                    {
+                        if (q.Name == printerName) { pq = q; break; }
+                    }
                 }
+
+                var printDialog = new PrintDialog();
                 if (pq == null)
                 {
-                    MessageBox.Show($"Tlačiareň '{printerName}' nebola nájdená.", "Chyba", MessageBoxButton.OK, MessageBoxImage.Error);
-                    return false;
+                    if (printDialog.ShowDialog() != true || printDialog.PrintQueue == null)
+                        return false;
+                    pq = printDialog.PrintQueue;
+                    SetDefaultPrinter(pq.Name);
                 }
 
                 printDialog.PrintQueue = pq;

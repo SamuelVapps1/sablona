@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
@@ -23,37 +25,59 @@ namespace PetShopLabelPrinter
         private readonly CalibrationTestService _calibService;
 
         private readonly ObservableCollection<Product> _products = new ObservableCollection<Product>();
-        private readonly ObservableCollection<QueuedLabel> _queue = new ObservableCollection<QueuedLabel>();
         private readonly ObservableCollection<PrintHistoryItem> _history = new ObservableCollection<PrintHistoryItem>();
+        private readonly ICollectionView _productView;
 
         private bool _isAdminMode;
-        private const string AdminPin = "1234"; // MVP: simple PIN
+        private const string AdminPin = "1234";
 
         public MainWindow()
         {
             InitializeComponent();
             _db = new Database();
             _db.Initialize();
-
             _pdfService = new PdfExportService(_db);
             _printService = new PrintService(_db);
             _calibService = new CalibrationTestService(_db);
 
             ProductGrid.ItemsSource = _products;
-            QueueGrid.ItemsSource = _queue;
             HistoryList.ItemsSource = _history;
+            _productView = CollectionViewSource.GetDefaultView(_products);
 
-            LoadProducts("");
+            LoadProducts();
             LoadHistory();
             LoadPrinterList();
+            LoadFontLists();
+            LoadAdminSettings();
             SwitchToUserMode();
+            UpdateHistoryActions();
         }
 
-        private void LoadProducts(string search)
+        private void LoadProducts()
         {
             _products.Clear();
-            foreach (var p in _db.SearchProducts(search))
+            foreach (var p in _db.SearchProducts(string.Empty))
+            {
+                if (p.Quantity < 1) p.Quantity = 1;
+                p.IsActiveForPrint = false;
                 _products.Add(p);
+            }
+            ApplySearchFilter();
+            RefreshPreview();
+        }
+
+        private void ApplySearchFilter()
+        {
+            var term = (TxtSearch.Text ?? "").Trim();
+            _productView.Filter = o =>
+            {
+                var p = o as Product;
+                if (p == null) return false;
+                if (term.Length == 0) return true;
+                return (p.ProductName ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
+                       || (p.VariantText ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+            };
+            _productView.Refresh();
         }
 
         private void LoadHistory()
@@ -61,6 +85,7 @@ namespace PetShopLabelPrinter
             _history.Clear();
             foreach (var h in _db.GetPrintHistory())
                 _history.Add(h);
+            UpdateHistoryActions();
         }
 
         private void LoadPrinterList()
@@ -69,82 +94,127 @@ namespace PetShopLabelPrinter
             foreach (var name in _printService.GetInstalledPrinters())
                 CmbPrinter.Items.Add(name);
             var def = _printService.GetDefaultPrinter();
-            if (!string.IsNullOrEmpty(def))
+            if (!string.IsNullOrWhiteSpace(def))
                 CmbPrinter.SelectedItem = def;
+        }
+
+        private void LoadFontLists()
+        {
+            var fonts = Fonts.SystemFontFamilies
+                .Select(f => f.Source)
+                .Distinct()
+                .OrderBy(f => f)
+                .ToList();
+            CmbProductNameFont.ItemsSource = fonts;
+            CmbVariantFont.ItemsSource = fonts;
+            CmbPriceBigFont.ItemsSource = fonts;
         }
 
         private void TxtSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            LoadProducts(TxtSearch.Text);
+            ApplySearchFilter();
         }
 
-        private void TxtSearch_KeyDown(object sender, KeyEventArgs e)
+        private void ProductGrid_RowEditEnding(object sender, DataGridRowEditEndingEventArgs e)
         {
-            if (e.Key == Key.Enter && ProductGrid.Items.Count > 0)
+            var p = e.Row.Item as Product;
+            if (p == null) return;
+
+            Dispatcher.BeginInvoke(new Action(() =>
             {
-                ProductGrid.SelectedIndex = 0;
-                ProductGrid.Focus();
-            }
+                NormalizeProduct(p);
+                if (string.IsNullOrWhiteSpace(p.ProductName))
+                    return;
+                if (p.Id == 0) _db.InsertProduct(p);
+                else _db.UpdateProduct(p);
+                RefreshPreview();
+            }));
         }
 
         private void ProductGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            BtnAddToQueue.IsEnabled = ProductGrid.SelectedItem is Product;
+            RefreshPreview();
         }
 
-        private void QueueGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void NormalizeProduct(Product p)
         {
-            BtnRemoveFromQueue.IsEnabled = QueueGrid.SelectedItem is QueuedLabel;
+            if (p.Quantity < 1) p.Quantity = 1;
+            p.ProductName = (p.ProductName ?? "").Trim();
+            p.VariantText = (p.VariantText ?? "").Trim();
+            p.SmallPackLabel = (p.SmallPackLabel ?? "").Trim();
+            p.LargePackLabel = (p.LargePackLabel ?? "").Trim();
+            p.UnitPriceText = (p.UnitPriceText ?? "").Trim();
         }
 
-        private void BtnRemoveFromQueue_Click(object sender, RoutedEventArgs e)
+        private void SaveAllProducts()
         {
-            if (QueueGrid.SelectedItem is QueuedLabel q)
-                _queue.Remove(q);
-        }
+            ProductGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            ProductGrid.CommitEdit(DataGridEditingUnit.Row, true);
 
-        private void BtnAddToQueue_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProductGrid.SelectedItem is not Product p) return;
-            var qty = 1;
-            int.TryParse(TxtQuantity.Text, out qty);
-            if (qty < 1) qty = 1;
-
-            var existing = _queue.FirstOrDefault(x => x.Product.Id == p.Id);
-            if (existing != null)
-                existing.Quantity += qty;
-            else
-                _queue.Add(new QueuedLabel { Product = p, Quantity = qty });
-        }
-
-        private void BtnPrint_Click(object sender, RoutedEventArgs e)
-        {
-            if (_queue.Count == 0)
+            foreach (var p in _products)
             {
-                MessageBox.Show("Pridajte produkty do fronty.", "Fronta prázdna", MessageBoxButton.OK, MessageBoxImage.Information);
+                NormalizeProduct(p);
+                if (string.IsNullOrWhiteSpace(p.ProductName))
+                    continue;
+                if (p.Id == 0) _db.InsertProduct(p);
+                else _db.UpdateProduct(p);
+            }
+        }
+
+        private List<QueuedLabel> BuildQueueFromCurrentSelection()
+        {
+            var fromChecks = _products.Where(p => p.IsActiveForPrint).ToList();
+            var sourceRows = fromChecks.Count > 0
+                ? fromChecks
+                : ProductGrid.SelectedItems.Cast<object>().OfType<Product>().ToList();
+
+            var queue = new List<QueuedLabel>();
+            foreach (var p in sourceRows)
+            {
+                var qty = p.Quantity < 1 ? 1 : p.Quantity;
+                queue.Add(new QueuedLabel { Product = p, Quantity = qty });
+            }
+            return queue;
+        }
+
+        private string BuildHistoryNames(IReadOnlyCollection<QueuedLabel> queue)
+        {
+            var names = queue.Select(q => q.Product.ProductName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList();
+            if (names.Count <= 4) return string.Join(", ", names);
+            return string.Join(", ", names.Take(4)) + $" (+{names.Count - 4})";
+        }
+
+        private void BtnPrintSelected_Click(object sender, RoutedEventArgs e)
+        {
+            SaveAllProducts();
+            var queue = BuildQueueFromCurrentSelection();
+            if (queue.Count == 0)
+            {
+                MessageBox.Show("Vyberte riadky (alebo označte Tlačiť?) a nastavte Počet.", "Bez výberu", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var ok = _printService.PrintSilent(_queue.ToList());
-            if (ok)
+            if (_printService.PrintSilent(queue))
             {
-                var path = _pdfService.ExportToPdf(_queue.ToList());
                 _db.AddPrintHistory(new PrintHistoryItem
                 {
                     PrintedAt = DateTime.Now,
-                    ProductNames = string.Join(", ", _queue.Select(x => x.Product.ProductName).Distinct()),
-                    TotalLabels = _queue.Sum(x => x.Quantity),
-                    PdfPath = path ?? ""
+                    JobType = "PRINT",
+                    ProductNames = BuildHistoryNames(queue),
+                    TotalLabels = queue.Sum(q => q.Quantity),
+                    PdfPath = ""
                 });
                 LoadHistory();
             }
         }
 
-        private void BtnExportPdf_Click(object sender, RoutedEventArgs e)
+        private void BtnExportSelected_Click(object sender, RoutedEventArgs e)
         {
-            if (_queue.Count == 0)
+            SaveAllProducts();
+            var queue = BuildQueueFromCurrentSelection();
+            if (queue.Count == 0)
             {
-                MessageBox.Show("Pridajte produkty do fronty.", "Fronta prázdna", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Vyberte riadky (alebo označte Tlačiť?) a nastavte Počet.", "Bez výberu", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -153,65 +223,82 @@ namespace PetShopLabelPrinter
                 Filter = "PDF|*.pdf",
                 FileName = $"Labels_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
             };
-            if (dlg.ShowDialog() == true)
+            if (dlg.ShowDialog() != true) return;
+
+            var path = _pdfService.ExportToPdf(queue, dlg.FileName);
+            _db.AddPrintHistory(new PrintHistoryItem
             {
-                var path = _pdfService.ExportToPdf(_queue.ToList(), dlg.FileName);
-                _db.AddPrintHistory(new PrintHistoryItem
-                {
-                    PrintedAt = DateTime.Now,
-                    ProductNames = string.Join(", ", _queue.Select(x => x.Product.ProductName).Distinct()),
-                    TotalLabels = _queue.Sum(x => x.Quantity),
-                    PdfPath = path
-                });
-                LoadHistory();
-                MessageBox.Show($"PDF uložené: {path}", "Hotovo", MessageBoxButton.OK);
+                PrintedAt = DateTime.Now,
+                JobType = "EXPORT",
+                ProductNames = BuildHistoryNames(queue),
+                TotalLabels = queue.Sum(q => q.Quantity),
+                PdfPath = path
+            });
+            LoadHistory();
+            MessageBox.Show($"PDF uložené: {path}", "Export", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void BtnClearSelection_Click(object sender, RoutedEventArgs e)
+        {
+            foreach (var p in _products)
+            {
+                p.IsActiveForPrint = false;
+                if (p.Quantity < 1) p.Quantity = 1;
+            }
+            ProductGrid.Items.Refresh();
+            ProductGrid.UnselectAll();
+        }
+
+        private void BtnDeleteSelectedProducts_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = ProductGrid.SelectedItems.Cast<object>().OfType<Product>().ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Najprv vyberte riadky na zmazanie.", "Zmazať riadky", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (MessageBox.Show($"Zmazať {selected.Count} vybraných riadkov?", "Potvrdenie", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            foreach (var p in selected)
+            {
+                if (p.Id > 0) _db.DeleteProduct(p.Id);
+                _products.Remove(p);
             }
         }
 
         private void HistoryList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var enabled = HistoryList.SelectedItem is PrintHistoryItem;
-            BtnReprint.IsEnabled = enabled;
-            BtnOpenPdf.IsEnabled = enabled;
+            UpdateHistoryActions();
         }
 
-        private void BtnReprint_Click(object sender, RoutedEventArgs e)
+        private void UpdateHistoryActions()
         {
-            if (HistoryList.SelectedItem is not PrintHistoryItem h) return;
-            // Reprint: we don't store the actual queue, so we'd need to look up products by name
-            // For MVP: just print/export again with the same product names - we'd need to search products
-            var names = h.ProductNames.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).ToArray();
-            _queue.Clear();
-            foreach (var name in names)
+            if (HistoryList.SelectedItem is not PrintHistoryItem h)
             {
-                var products = _db.SearchProducts(name);
-                if (products.Count > 0)
-                    _queue.Add(new QueuedLabel { Product = products[0], Quantity = h.TotalLabels / names.Length });
+                BtnOpenPdf.IsEnabled = false;
+                return;
             }
-            if (_queue.Count > 0)
-            {
-                _printService.PrintSilent(_queue.ToList());
-                var path = _pdfService.ExportToPdf(_queue.ToList());
-                _db.AddPrintHistory(new PrintHistoryItem
-                {
-                    PrintedAt = DateTime.Now,
-                    ProductNames = h.ProductNames,
-                    TotalLabels = h.TotalLabels,
-                    PdfPath = path ?? ""
-                });
-                LoadHistory();
-            }
+            BtnOpenPdf.IsEnabled = !string.IsNullOrWhiteSpace(h.PdfPath);
         }
 
         private void BtnOpenPdf_Click(object sender, RoutedEventArgs e)
         {
-            if (HistoryList.SelectedItem is not PrintHistoryItem h) return;
-            if (string.IsNullOrEmpty(h.PdfPath) || !System.IO.File.Exists(h.PdfPath))
+            if (HistoryList.SelectedItem is not PrintHistoryItem h || string.IsNullOrWhiteSpace(h.PdfPath))
+                return;
+            if (!System.IO.File.Exists(h.PdfPath))
             {
-                MessageBox.Show("PDF súbor nie je k dispozícii.", "Chyba", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Súbor PDF neexistuje.", "História", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            try { Process.Start(h.PdfPath); } catch { }
+            try
+            {
+                Process.Start(new ProcessStartInfo(h.PdfPath) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Nepodarilo sa otvoriť PDF: " + ex.Message, "Chyba", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void BtnUserMode_Click(object sender, RoutedEventArgs e)
@@ -245,59 +332,68 @@ namespace PetShopLabelPrinter
             AdminPanel.Visibility = Visibility.Visible;
             TxtMode.Text = "Režim: Admin";
             LoadAdminSettings();
-            LoadProducts("");
-            AdminProductGrid.ItemsSource = _products;
             RefreshPreview();
         }
 
         private TemplateSettings GetSettingsFromForm()
         {
             var s = _db.GetTemplateSettings();
-            if (_isAdminMode && TxtProductNameFont != null)
-            {
-                s.ProductNameFontFamily = TxtProductNameFont?.Text ?? s.ProductNameFontFamily;
-                if (double.TryParse(TxtProductNameSize?.Text, out var parsed)) s.ProductNameFontSizePt = parsed;
-                if (double.TryParse(TxtProductNameMinSize?.Text, out parsed)) s.ProductNameMinFontSizePt = parsed;
-                s.ProductNameBold = ChkProductNameBold?.IsChecked == true;
-                s.VariantTextFontFamily = TxtVariantFont?.Text ?? s.VariantTextFontFamily;
-                if (double.TryParse(TxtVariantSize?.Text, out parsed)) s.VariantTextFontSizePt = parsed;
-                s.VariantTextBold = ChkVariantBold?.IsChecked == true;
-                s.PriceBigFontFamily = TxtPriceBigFont?.Text ?? s.PriceBigFontFamily;
-                if (double.TryParse(TxtPriceBigSize?.Text, out parsed)) s.PriceBigFontSizePt = parsed;
-                s.PriceBigBold = ChkPriceBigBold?.IsChecked == true;
-                if (double.TryParse(TxtLeftColMm?.Text, out parsed)) s.LeftColWidthMm = parsed;
-                if (double.TryParse(TxtRightColMm?.Text, out parsed)) s.RightColWidthMm = parsed;
-                if (double.TryParse(TxtTopMm?.Text, out parsed)) s.RightTopHeightMm = parsed;
-                if (double.TryParse(TxtMidMm?.Text, out parsed)) s.RightMiddleHeightMm = parsed;
-                if (double.TryParse(TxtBotMm?.Text, out parsed)) s.RightBottomHeightMm = parsed;
-            }
+            if (CmbProductNameFont.SelectedItem is string pnFont && pnFont.Length > 0) s.ProductNameFontFamily = pnFont;
+            if (double.TryParse(TxtProductNameSize.Text, out var parsed)) s.ProductNameFontSizePt = parsed;
+            if (double.TryParse(TxtProductNameMinSize.Text, out parsed)) s.ProductNameMinFontSizePt = parsed;
+            s.ProductNameBold = ChkProductNameBold.IsChecked == true;
+
+            if (CmbVariantFont.SelectedItem is string vFont && vFont.Length > 0) s.VariantTextFontFamily = vFont;
+            if (double.TryParse(TxtVariantSize.Text, out parsed)) s.VariantTextFontSizePt = parsed;
+            s.VariantTextBold = ChkVariantBold.IsChecked == true;
+
+            if (CmbPriceBigFont.SelectedItem is string pbFont && pbFont.Length > 0) s.PriceBigFontFamily = pbFont;
+            if (double.TryParse(TxtPriceBigSize.Text, out parsed)) s.PriceBigFontSizePt = parsed;
+            s.PriceBigBold = ChkPriceBigBold.IsChecked == true;
+
+            if (double.TryParse(TxtLeftColMm.Text, out parsed)) s.LeftColWidthMm = parsed;
+            if (double.TryParse(TxtRightColMm.Text, out parsed)) s.RightColWidthMm = parsed;
+            if (double.TryParse(TxtTopMm.Text, out parsed)) s.RightTopHeightMm = parsed;
+            if (double.TryParse(TxtMidMm.Text, out parsed)) s.RightMiddleHeightMm = parsed;
+            if (double.TryParse(TxtBotMm.Text, out parsed)) s.RightBottomHeightMm = parsed;
+            s.CropMarksEnabled = ChkCropMarks.IsChecked == true;
+            if (double.TryParse(TxtOffsetX.Text, out parsed)) s.OffsetXMm = parsed;
+            if (double.TryParse(TxtOffsetY.Text, out parsed)) s.OffsetYMm = parsed;
             return s;
         }
 
         private void LoadAdminSettings()
         {
             var s = _db.GetTemplateSettings();
-            TxtProductNameFont.Text = s.ProductNameFontFamily;
-            TxtProductNameSize.Text = s.ProductNameFontSizePt.ToString();
-            TxtProductNameMinSize.Text = s.ProductNameMinFontSizePt.ToString();
+            CmbProductNameFont.SelectedItem = s.ProductNameFontFamily;
+            TxtProductNameSize.Text = s.ProductNameFontSizePt.ToString("0.##");
+            TxtProductNameMinSize.Text = s.ProductNameMinFontSizePt.ToString("0.##");
             ChkProductNameBold.IsChecked = s.ProductNameBold;
-            TxtVariantFont.Text = s.VariantTextFontFamily;
-            TxtVariantSize.Text = s.VariantTextFontSizePt.ToString();
+
+            CmbVariantFont.SelectedItem = s.VariantTextFontFamily;
+            TxtVariantSize.Text = s.VariantTextFontSizePt.ToString("0.##");
             ChkVariantBold.IsChecked = s.VariantTextBold;
-            TxtPriceBigFont.Text = s.PriceBigFontFamily;
-            TxtPriceBigSize.Text = s.PriceBigFontSizePt.ToString();
+
+            CmbPriceBigFont.SelectedItem = s.PriceBigFontFamily;
+            TxtPriceBigSize.Text = s.PriceBigFontSizePt.ToString("0.##");
             ChkPriceBigBold.IsChecked = s.PriceBigBold;
-            TxtLeftColMm.Text = s.LeftColWidthMm.ToString();
-            TxtRightColMm.Text = s.RightColWidthMm.ToString();
-            TxtTopMm.Text = s.RightTopHeightMm.ToString();
-            TxtMidMm.Text = s.RightMiddleHeightMm.ToString();
-            TxtBotMm.Text = s.RightBottomHeightMm.ToString();
+
+            TxtLeftColMm.Text = s.LeftColWidthMm.ToString("0.##");
+            TxtRightColMm.Text = s.RightColWidthMm.ToString("0.##");
+            TxtTopMm.Text = s.RightTopHeightMm.ToString("0.##");
+            TxtMidMm.Text = s.RightMiddleHeightMm.ToString("0.##");
+            TxtBotMm.Text = s.RightBottomHeightMm.ToString("0.##");
             ChkCropMarks.IsChecked = s.CropMarksEnabled;
-            TxtOffsetX.Text = s.OffsetXMm.ToString();
-            TxtOffsetY.Text = s.OffsetYMm.ToString();
+            TxtOffsetX.Text = s.OffsetXMm.ToString("0.##");
+            TxtOffsetY.Text = s.OffsetYMm.ToString("0.##");
         }
 
         private void AdminSetting_Changed(object sender, TextChangedEventArgs e)
+        {
+            if (_isAdminMode) RefreshPreview();
+        }
+
+        private void AdminSetting_Changed(object sender, SelectionChangedEventArgs e)
         {
             if (_isAdminMode) RefreshPreview();
         }
@@ -307,51 +403,35 @@ namespace PetShopLabelPrinter
             if (_isAdminMode) RefreshPreview();
         }
 
-        private void BtnRefreshPreview_Click(object sender, RoutedEventArgs e)
-        {
-            RefreshPreview();
-        }
-
         private void BtnSaveSettings_Click(object sender, RoutedEventArgs e)
         {
-            var s = _db.GetTemplateSettings();
-            s.ProductNameFontFamily = TxtProductNameFont.Text;
-            if (double.TryParse(TxtProductNameSize.Text, out var parsed)) s.ProductNameFontSizePt = parsed;
-            if (double.TryParse(TxtProductNameMinSize.Text, out parsed)) s.ProductNameMinFontSizePt = parsed;
-            s.ProductNameBold = ChkProductNameBold.IsChecked == true;
-            s.VariantTextFontFamily = TxtVariantFont.Text;
-            if (double.TryParse(TxtVariantSize.Text, out parsed)) s.VariantTextFontSizePt = parsed;
-            s.VariantTextBold = ChkVariantBold.IsChecked == true;
-            s.PriceBigFontFamily = TxtPriceBigFont.Text;
-            if (double.TryParse(TxtPriceBigSize.Text, out parsed)) s.PriceBigFontSizePt = parsed;
-            s.PriceBigBold = ChkPriceBigBold.IsChecked == true;
-            if (double.TryParse(TxtLeftColMm.Text, out parsed)) s.LeftColWidthMm = parsed;
-            if (double.TryParse(TxtRightColMm.Text, out parsed)) s.RightColWidthMm = parsed;
-            if (double.TryParse(TxtTopMm.Text, out parsed)) s.RightTopHeightMm = parsed;
-            if (double.TryParse(TxtMidMm.Text, out parsed)) s.RightMiddleHeightMm = parsed;
-            if (double.TryParse(TxtBotMm.Text, out parsed)) s.RightBottomHeightMm = parsed;
-            s.CropMarksEnabled = ChkCropMarks.IsChecked == true;
-            if (double.TryParse(TxtOffsetX.Text, out parsed)) s.OffsetXMm = parsed;
-            if (double.TryParse(TxtOffsetY.Text, out parsed)) s.OffsetYMm = parsed;
-
+            var s = GetSettingsFromForm();
             _db.SaveTemplateSettings(s);
             RefreshPreview();
-            MessageBox.Show("Nastavenia uložené.", "Admin", MessageBoxButton.OK);
+            MessageBox.Show("Nastavenia uložené.", "Admin", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private Product GetPreviewProduct()
+        {
+            if (ProductGrid.SelectedItem is Product selected && !string.IsNullOrWhiteSpace(selected.ProductName))
+                return selected;
+            var first = _products.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.ProductName));
+            return first ?? new Product
+            {
+                ProductName = "Produkt",
+                VariantText = "Varianta",
+                SmallPackLabel = "Balenie 1 kg",
+                SmallPackPrice = 0m,
+                LargePackLabel = "Balenie 17 kg",
+                LargePackPrice = 0m,
+                UnitPriceText = "1 kg = 0,00 €"
+            };
         }
 
         private void RefreshPreview()
         {
             var s = GetSettingsFromForm();
-            var sample = new Product
-            {
-                ProductName = "Vzorový produkt",
-                VariantText = "Varianta",
-                SmallPackLabel = "Balenie 1 kg",
-                SmallPackPrice = 5.99m,
-                LargePackLabel = "Balenie 17 kg",
-                LargePackWeightKg = 17,
-                LargePackPrice = 42.90m
-            };
+            var previewProduct = GetPreviewProduct();
 
             var w = Units.MmToWpfUnits(LabelRenderer.LabelWidthMm);
             var h = Units.MmToWpfUnits(LabelRenderer.LabelHeightMm);
@@ -363,12 +443,12 @@ namespace PetShopLabelPrinter
             using (var dc = dv.RenderOpen())
             {
                 var renderer = new LabelRenderer(s);
-                renderer.Draw(dc, sample, 0, 0);
+                renderer.Draw(dc, previewProduct, 0, 0);
             }
 
             var bmp = new RenderTargetBitmap((int)w, (int)h, 96, 96, PixelFormats.Pbgra32);
             bmp.Render(dv);
-            var img = new System.Windows.Controls.Image { Source = bmp };
+            var img = new Image { Source = bmp };
             Canvas.SetLeft(img, 0);
             Canvas.SetTop(img, 0);
             PreviewCanvas.Children.Add(img);
@@ -376,55 +456,43 @@ namespace PetShopLabelPrinter
 
         private void BtnSavePrinter_Click(object sender, RoutedEventArgs e)
         {
-            if (CmbPrinter.SelectedItem is string name)
+            if (CmbPrinter.SelectedItem is not string name || string.IsNullOrWhiteSpace(name))
             {
-                _printService.SetDefaultPrinter(name);
-                MessageBox.Show($"Tlačiareň '{name}' uložená.", "Admin", MessageBoxButton.OK);
+                MessageBox.Show("Vyberte tlačiareň.", "Admin", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
             }
+            _printService.SetDefaultPrinter(name);
+            MessageBox.Show($"Predvolená tlačiareň: {name}", "Admin", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void BtnTestPage_Click(object sender, RoutedEventArgs e)
+        private void BtnGenerateTestPdf_Click(object sender, RoutedEventArgs e)
         {
             var path = _calibService.GenerateTestPdf();
-            try { Process.Start(path); } catch { }
-            MessageBox.Show($"Test PDF: {path}", "Admin", MessageBoxButton.OK);
-        }
-
-        private void AdminProductGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            BtnEditProduct.IsEnabled = AdminProductGrid.SelectedItem is Product;
-            BtnDeleteProduct.IsEnabled = AdminProductGrid.SelectedItem is Product;
-        }
-
-        private void BtnAddProduct_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new ProductEditDialog { Owner = this };
-            if (dlg.ShowDialog() == true)
+            try
             {
-                _db.InsertProduct(dlg.Product);
-                LoadProducts("");
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
             }
+            catch { }
         }
 
-        private void BtnEditProduct_Click(object sender, RoutedEventArgs e)
+        private void BtnPrintTest_Click(object sender, RoutedEventArgs e)
         {
-            if (AdminProductGrid.SelectedItem is not Product p) return;
-            var dlg = new ProductEditDialog(p) { Owner = this };
-            if (dlg.ShowDialog() == true)
+            var printer = _printService.GetDefaultPrinter();
+            if (string.IsNullOrWhiteSpace(printer))
             {
-                _db.UpdateProduct(dlg.Product);
-                LoadProducts("");
+                MessageBox.Show("Najprv uložte predvolenú tlačiareň v Admin režime.", "Tlač testu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
+            if (!_calibService.PrintTestPdf(printer!))
+                MessageBox.Show("Nepodarilo sa odoslať test na tlačiareň.", "Tlač testu", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
-        private void BtnDeleteProduct_Click(object sender, RoutedEventArgs e)
+        private void BtnClearHistory_Click(object sender, RoutedEventArgs e)
         {
-            if (AdminProductGrid.SelectedItem is not Product p) return;
-            if (MessageBox.Show($"Zmazať produkt '{p.ProductName}'?", "Potvrdiť", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
-            {
-                _db.DeleteProduct(p.Id);
-                LoadProducts("");
-            }
+            if (MessageBox.Show("Naozaj vymazať celú históriu úloh?", "História", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                return;
+            _db.ClearPrintHistory();
+            LoadHistory();
         }
     }
 }

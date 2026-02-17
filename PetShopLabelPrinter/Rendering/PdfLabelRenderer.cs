@@ -97,7 +97,9 @@ namespace PetShopLabelPrinter.Rendering
             DrawSection(gfx, product.LargePackLabel ?? "", Formatting.FormatPrice(product.LargePackPrice),
                 x + pad, y + topH, w - pad * 2, midH);
 
-            var unitText = Formatting.FormatUnitPrice(product.UnitPricePerKg);
+            var unitText = string.IsNullOrWhiteSpace(product.UnitPriceText)
+                ? Formatting.FormatUnitPrice(product.UnitPricePerKg)
+                : product.UnitPriceText;
             var uFont = new XFont(_settings.UnitPriceSmallFontFamily, _settings.UnitPriceSmallFontSizePt,
                 _settings.UnitPriceSmallBold ? XFontStyleEx.Bold : XFontStyleEx.Regular);
             gfx.DrawString(unitText, uFont, XBrushes.Black,

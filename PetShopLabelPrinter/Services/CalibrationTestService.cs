@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
@@ -73,6 +74,29 @@ namespace PetShopLabelPrinter.Services
             using (var stream = File.Open(path, FileMode.Create, FileAccess.Write, FileShare.None))
                 doc.Save(stream, false);
             return path;
+        }
+
+        public bool PrintTestPdf(string printerName)
+        {
+            var path = GenerateTestPdf();
+            try
+            {
+                var psi = new ProcessStartInfo
+                {
+                    FileName = path,
+                    Verb = "printto",
+                    Arguments = $"\"{printerName}\"",
+                    UseShellExecute = true,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                Process.Start(psi);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

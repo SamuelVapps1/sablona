@@ -12,7 +12,10 @@ namespace PetShopLabelPrinter.Models
         public decimal? LargePackWeightKg { get; set; }
         public decimal? LargePackPrice { get; set; }
         public decimal? UnitPriceOverride { get; set; }
+        public string UnitPriceText { get; set; } = "";
         public string Notes { get; set; } = "";
+        public int Quantity { get; set; } = 1;
+        public bool IsActiveForPrint { get; set; } = false;
 
         /// <summary>
         /// Computed: LargePackPrice/LargePackWeightKg if available; else SmallPackPrice/SmallPackWeightKg; else null.

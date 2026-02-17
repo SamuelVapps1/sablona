@@ -145,8 +145,10 @@ namespace PetShopLabelPrinter.Rendering
             DrawSection(dc, product.LargePackLabel ?? "", Formatting.FormatPrice(product.LargePackPrice),
                 midRect, dpi);
 
-            // Bottom: UnitPricePerKg (override if set, else computed; 2 decimals, comma, €)
-            var unitText = Formatting.FormatUnitPrice(product.UnitPricePerKg);
+            // Bottom: allow manually entered unit price text for store-specific wording.
+            var unitText = string.IsNullOrWhiteSpace(product.UnitPriceText)
+                ? Formatting.FormatUnitPrice(product.UnitPricePerKg)
+                : product.UnitPriceText;
             var uFont = new Typeface(
                 new FontFamily(_settings.UnitPriceSmallFontFamily),
                 FontStyles.Normal,

@@ -41,36 +41,24 @@ namespace PetShopLabelPrinter.Data
                     LargePackWeightKg REAL,
                     LargePackPrice REAL,
                     UnitPriceOverride REAL,
+                    UnitPriceText TEXT,
                     Notes TEXT
                 )");
 
-            // Migration: add UnitPriceOverride if missing (existing DBs)
-            try
-            {
-                using (var cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = "PRAGMA table_info(Products)";
-                    using var r = cmd.ExecuteReader();
-                    var hasOverride = false;
-                    while (r.Read())
-                    {
-                        var name = r.GetString(1);
-                        if (name == "UnitPriceOverride") { hasOverride = true; break; }
-                    }
-                    if (!hasOverride)
-                        Execute(conn, "ALTER TABLE Products ADD COLUMN UnitPriceOverride REAL");
-                }
-            }
-            catch { /* ignore migration errors */ }
+            // Migrations for existing DBs.
+            try { Execute(conn, "ALTER TABLE Products ADD COLUMN UnitPriceOverride REAL"); } catch { }
+            try { Execute(conn, "ALTER TABLE Products ADD COLUMN UnitPriceText TEXT"); } catch { }
 
             Execute(conn, @"
                 CREATE TABLE IF NOT EXISTS PrintHistory (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     PrintedAt TEXT NOT NULL,
+                    JobType TEXT,
                     ProductNames TEXT,
                     TotalLabels INTEGER,
                     PdfPath TEXT
                 )");
+            try { Execute(conn, "ALTER TABLE PrintHistory ADD COLUMN JobType TEXT"); } catch { }
 
             Execute(conn, @"
                 CREATE TABLE IF NOT EXISTS TemplateSettings (
@@ -112,8 +100,8 @@ namespace PetShopLabelPrinter.Data
                     foreach (var (pn, vt, spl, spw, spp, lpl, lpw, lpp) in seed)
                     {
                         using var ins = conn.CreateCommand();
-                        ins.CommandText = @"INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice, LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, Notes)
-                            VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, NULL, '')";
+                        ins.CommandText = @"INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice, LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, UnitPriceText, Notes)
+                            VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, NULL, '', '')";
                         ins.Parameters.AddWithValue("@pn", pn);
                         ins.Parameters.AddWithValue("@vt", vt);
                         ins.Parameters.AddWithValue("@spl", spl);
@@ -161,8 +149,8 @@ namespace PetShopLabelPrinter.Data
             {
                 cmd.CommandText = @"
                     INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice,
-                        LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, Notes)
-                    VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, @upo, @notes)";
+                        LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, UnitPriceText, Notes)
+                    VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, @upo, @upt, @notes)";
                 AddProductParams(cmd, p);
                 cmd.ExecuteNonQuery();
             }
@@ -181,7 +169,7 @@ namespace PetShopLabelPrinter.Data
             cmd.CommandText = @"
                 UPDATE Products SET ProductName=@pn, VariantText=@vt, SmallPackLabel=@spl, SmallPackWeightKg=@spw,
                     SmallPackPrice=@spp, LargePackLabel=@lpl, LargePackWeightKg=@lpw, LargePackPrice=@lpp,
-                    UnitPriceOverride=@upo, Notes=@notes
+                    UnitPriceOverride=@upo, UnitPriceText=@upt, Notes=@notes
                 WHERE Id=@id";
             cmd.Parameters.AddWithValue("@id", p.Id);
             AddProductParams(cmd, p);
@@ -227,6 +215,7 @@ namespace PetShopLabelPrinter.Data
             cmd.Parameters.AddWithValue("@lpw", p.LargePackWeightKg);
             cmd.Parameters.AddWithValue("@lpp", p.LargePackPrice);
             cmd.Parameters.AddWithValue("@upo", p.UnitPriceOverride);
+            cmd.Parameters.AddWithValue("@upt", p.UnitPriceText ?? "");
             cmd.Parameters.AddWithValue("@notes", p.Notes ?? "");
         }
 
@@ -248,6 +237,7 @@ namespace PetShopLabelPrinter.Data
                 LargePackWeightKg = GetDecimalNull(r, idx, "LargePackWeightKg"),
                 LargePackPrice = GetDecimalNull(r, idx, "LargePackPrice"),
                 UnitPriceOverride = idx.ContainsKey("UnitPriceOverride") ? GetDecimalNull(r, idx, "UnitPriceOverride") : null,
+                UnitPriceText = idx.ContainsKey("UnitPriceText") ? GetString(r, idx, "UnitPriceText") : "",
                 Notes = GetString(r, idx, "Notes")
             };
             return p;
@@ -304,9 +294,10 @@ namespace PetShopLabelPrinter.Data
             conn.Open();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO PrintHistory (PrintedAt, ProductNames, TotalLabels, PdfPath)
-                VALUES (@at, @names, @total, @path)";
+                INSERT INTO PrintHistory (PrintedAt, JobType, ProductNames, TotalLabels, PdfPath)
+                VALUES (@at, @type, @names, @total, @path)";
             cmd.Parameters.AddWithValue("@at", h.PrintedAt.ToString("o"));
+            cmd.Parameters.AddWithValue("@type", h.JobType ?? "PRINT");
             cmd.Parameters.AddWithValue("@names", h.ProductNames ?? "");
             cmd.Parameters.AddWithValue("@total", h.TotalLabels);
             cmd.Parameters.AddWithValue("@path", h.PdfPath ?? "");
@@ -319,7 +310,7 @@ namespace PetShopLabelPrinter.Data
             using var conn = CreateConnection();
             conn.Open();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, PrintedAt, ProductNames, TotalLabels, PdfPath FROM PrintHistory ORDER BY Id DESC LIMIT @lim";
+            cmd.CommandText = "SELECT Id, PrintedAt, IFNULL(JobType,''), ProductNames, TotalLabels, PdfPath FROM PrintHistory ORDER BY Id DESC LIMIT @lim";
             cmd.Parameters.AddWithValue("@lim", limit);
             using var r = cmd.ExecuteReader();
             while (r.Read())
@@ -328,12 +319,22 @@ namespace PetShopLabelPrinter.Data
                 {
                     Id = r.GetInt64(0),
                     PrintedAt = DateTime.Parse(r.GetString(1)),
-                    ProductNames = r.IsDBNull(2) ? "" : r.GetString(2),
-                    TotalLabels = r.GetInt32(3),
-                    PdfPath = r.IsDBNull(4) ? "" : r.GetString(4)
+                    JobType = r.IsDBNull(2) || string.IsNullOrWhiteSpace(r.GetString(2)) ? "PRINT" : r.GetString(2),
+                    ProductNames = r.IsDBNull(3) ? "" : r.GetString(3),
+                    TotalLabels = r.GetInt32(4),
+                    PdfPath = r.IsDBNull(5) ? "" : r.GetString(5)
                 });
             }
             return list;
+        }
+
+        public void ClearPrintHistory()
+        {
+            using var conn = CreateConnection();
+            conn.Open();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "DELETE FROM PrintHistory";
+            cmd.ExecuteNonQuery();
         }
 
         public string? GetSetting(string key)
