@@ -113,14 +113,32 @@
                 <GroupBox Header="Rozloženie a kalibrácia (mm)" Padding="12" Margin="0,0,0,8">
                     <StackPanel>
                         <WrapPanel>
-                            <TextBlock Text="Ľavý stĺpec" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtLeftColMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                            <TextBlock Text="Šírka štítku" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TxtLabelWidthMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                            <TextBlock Text="Výška štítku" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TxtLabelHeightMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
                             <TextBlock Text="Pravý stĺpec" VerticalAlignment="Center"/>
-                            <TextBox x:Name="TxtRightColMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                            <TextBox x:Name="TxtRightColumnWidthMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                            <TextBlock Text="Hrúbka okraja" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TxtBorderThicknessMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                        </WrapPanel>
+                        <WrapPanel Margin="0,8,0,0">
+                            <TextBlock Text="Gap medzi štítkami" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TxtGapMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                            <TextBlock Text="Okraj stránky" VerticalAlignment="Center"/>
+                            <TextBox x:Name="TxtPageMarginMm" Width="56" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
                             <TextBlock Text="Top/Mid/Bot" VerticalAlignment="Center"/>
                             <TextBox x:Name="TxtTopMm" Width="52" Margin="6,0,0,0" TextChanged="AdminSetting_Changed"/>
                             <TextBox x:Name="TxtMidMm" Width="52" Margin="6,0,0,0" TextChanged="AdminSetting_Changed"/>
                             <TextBox x:Name="TxtBotMm" Width="52" Margin="6,0,16,0" TextChanged="AdminSetting_Changed"/>
+                        </WrapPanel>
+                        <WrapPanel Margin="0,8,0,0">
+                            <CheckBox x:Name="ChkShowSeparatorBetweenPacks" Content="Deliť malé/veľké balenie"
+                                      VerticalAlignment="Center" Margin="0,0,16,0"
+                                      Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
+                            <CheckBox x:Name="ChkShowBottomSeparator" Content="Deliť veľké balenie/jednotková cena"
+                                      VerticalAlignment="Center" Margin="0,0,16,0"
+                                      Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
                             <CheckBox x:Name="ChkCropMarks" Content="Crop marks" VerticalAlignment="Center"
                                       Checked="AdminSetting_Checked" Unchecked="AdminSetting_Checked"/>
                         </WrapPanel>

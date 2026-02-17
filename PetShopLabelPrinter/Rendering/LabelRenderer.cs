@@ -7,9 +7,7 @@ using PetShopLabelPrinter.Rendering;
 namespace PetShopLabelPrinter.Rendering
 {
     /// <summary>
-    /// Renders a single 150mm x 38mm label with mm-based coordinates.
-    /// ProductName: max 2 lines, auto-reduce font to min if overflow.
-    /// VariantText: max 1 line, truncate with ellipsis.
+    /// Renders one label with template-configurable size and section widths.
     /// </summary>
     public class LabelRenderer
     {
@@ -25,20 +23,26 @@ namespace PetShopLabelPrinter.Rendering
 
         public void Draw(DrawingContext dc, Product product, double offsetXMm, double offsetYMm)
         {
+            var labelWidthMm = _settings.LabelWidthMm > 0 ? _settings.LabelWidthMm : LabelWidthMm;
+            var labelHeightMm = _settings.LabelHeightMm > 0 ? _settings.LabelHeightMm : LabelHeightMm;
+            var rightWidthMm = _settings.RightColumnWidthMm > 0 ? _settings.RightColumnWidthMm : _settings.RightColWidthMm;
+            rightWidthMm = Math.Max(10, Math.Min(labelWidthMm - 10, rightWidthMm));
+            var leftWidthMm = labelWidthMm - rightWidthMm;
+
             var ox = Units.MmToWpfUnits(offsetXMm + _settings.OffsetXMm);
             var oy = Units.MmToWpfUnits(offsetYMm + _settings.OffsetYMm);
-            var w = Units.MmToWpfUnits(LabelWidthMm);
-            var h = Units.MmToWpfUnits(LabelHeightMm);
+            var w = Units.MmToWpfUnits(labelWidthMm);
+            var h = Units.MmToWpfUnits(labelHeightMm);
 
             var rect = new Rect(ox, oy, w, h);
 
-            // Outer border (hairline)
-            var pen = new Pen(Brushes.Black, Units.MmToWpfUnits(_settings.LineThicknessMm));
+            var borderMm = _settings.BorderThicknessMm > 0 ? _settings.BorderThicknessMm : _settings.LineThicknessMm;
+            var pen = new Pen(Brushes.Black, Units.MmToWpfUnits(borderMm));
             dc.DrawRectangle(null, pen, rect);
 
             var pad = Units.MmToWpfUnits(_settings.PaddingMm);
-            var leftW = Units.MmToWpfUnits(_settings.LeftColWidthMm);
-            var rightW = Units.MmToWpfUnits(_settings.RightColWidthMm);
+            var leftW = Units.MmToWpfUnits(leftWidthMm);
+            var rightW = Units.MmToWpfUnits(rightWidthMm);
             var leftRect = new Rect(rect.Left + pad, rect.Top + pad, leftW - pad * 2, rect.Height - pad * 2);
             var rightRect = new Rect(rect.Left + leftW, rect.Top, rightW - pad, rect.Height);
 
@@ -123,15 +127,31 @@ namespace PetShopLabelPrinter.Rendering
             var topH = Units.MmToWpfUnits(_settings.RightTopHeightMm);
             var midH = Units.MmToWpfUnits(_settings.RightMiddleHeightMm);
             var botH = Units.MmToWpfUnits(_settings.RightBottomHeightMm);
-            var pen = new Pen(Brushes.Black, Units.MmToWpfUnits(_settings.LineThicknessMm));
+            var total = topH + midH + botH;
+            if (total <= 0)
+            {
+                topH = rect.Height / 3;
+                midH = rect.Height / 3;
+                botH = rect.Height / 3;
+            }
+            else
+            {
+                var scale = rect.Height / total;
+                topH *= scale;
+                midH *= scale;
+                botH *= scale;
+            }
+            var borderMm = _settings.BorderThicknessMm > 0 ? _settings.BorderThicknessMm : _settings.LineThicknessMm;
+            var pen = new Pen(Brushes.Black, Units.MmToWpfUnits(borderMm));
 
             var topRect = new Rect(rect.Left, rect.Top, rect.Width, topH);
             var midRect = new Rect(rect.Left, rect.Top + topH, rect.Width, midH);
             var botRect = new Rect(rect.Left, rect.Top + topH + midH, rect.Width, botH);
 
-            // Separator lines
-            dc.DrawLine(pen, new Point(rect.Left, rect.Top + topH), new Point(rect.Right, rect.Top + topH));
-            dc.DrawLine(pen, new Point(rect.Left, rect.Top + topH + midH), new Point(rect.Right, rect.Top + topH + midH));
+            if (_settings.ShowSeparatorBetweenPacks)
+                dc.DrawLine(pen, new Point(rect.Left, rect.Top + topH), new Point(rect.Right, rect.Top + topH));
+            if (_settings.ShowBottomSeparator)
+                dc.DrawLine(pen, new Point(rect.Left, rect.Top + topH + midH), new Point(rect.Right, rect.Top + topH + midH));
 
             var dpi = Application.Current?.MainWindow != null
                 ? VisualTreeHelper.GetDpi(Application.Current.MainWindow).PixelsPerDip

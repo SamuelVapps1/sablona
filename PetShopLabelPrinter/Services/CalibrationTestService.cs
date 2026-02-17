@@ -25,6 +25,9 @@ namespace PetShopLabelPrinter.Services
         public string GenerateTestPdf()
         {
             var settings = _db.GetTemplateSettings();
+            var labelWidthMm = settings.LabelWidthMm > 0 ? settings.LabelWidthMm : LabelRenderer.LabelWidthMm;
+            var labelHeightMm = settings.LabelHeightMm > 0 ? settings.LabelHeightMm : LabelRenderer.LabelHeightMm;
+            var marginMm = settings.PageMarginMm >= 0 ? settings.PageMarginMm : 10;
             var doc = new PdfDocument();
             doc.Info.Title = "Calibration Test";
 
@@ -61,10 +64,10 @@ namespace PetShopLabelPrinter.Services
             for (var y = 0.0; y <= A4Layout.A4HeightMm; y += 10)
                 gfx.DrawLine(pen, 0, MmToPt(y), a4Wpt, MmToPt(y));
 
-            var labelX = MmToPt(A4Layout.MarginLeftMm + settings.OffsetXMm);
-            var labelY = MmToPt(A4Layout.MarginTopMm + settings.OffsetYMm);
-            var labelW = MmToPt(LabelRenderer.LabelWidthMm);
-            var labelH = MmToPt(LabelRenderer.LabelHeightMm);
+            var labelX = MmToPt(marginMm + settings.OffsetXMm);
+            var labelY = MmToPt(marginMm + settings.OffsetYMm);
+            var labelW = MmToPt(labelWidthMm);
+            var labelH = MmToPt(labelHeightMm);
             var labelPen = new XPen(XColors.Black, 0.5);
             gfx.DrawRectangle(labelPen, labelX, labelY, labelW, labelH);
             gfx.DrawString("150 x 38 mm label outline", new XFont("Arial", 8), XBrushes.Black,

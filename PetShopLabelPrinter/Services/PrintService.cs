@@ -101,8 +101,8 @@ namespace PetShopLabelPrinter.Services
         {
             _settings = settings;
             _queue = queue;
-            _positions = A4Layout.ComputePositions(queue);
-            _pageCount = A4Layout.PagesNeeded(_positions.Count);
+            _positions = A4Layout.ComputePositions(queue, _settings);
+            _pageCount = A4Layout.PagesNeeded(_positions.Count, _settings);
             _pageSize = new Size(
                 Units.MmToWpfUnits(A4Layout.A4WidthMm),
                 Units.MmToWpfUnits(A4Layout.A4HeightMm));

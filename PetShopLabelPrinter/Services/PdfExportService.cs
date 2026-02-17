@@ -22,8 +22,8 @@ namespace PetShopLabelPrinter.Services
             if (queue == null || queue.Count == 0) return "";
 
             var settings = _db.GetTemplateSettings();
-            var positions = A4Layout.ComputePositions(queue);
-            var pagesNeeded = A4Layout.PagesNeeded(positions.Count);
+            var positions = A4Layout.ComputePositions(queue, settings);
+            var pagesNeeded = A4Layout.PagesNeeded(positions.Count, settings);
 
             var doc = new PdfDocument();
             doc.Info.Title = "Pet Shop Labels";

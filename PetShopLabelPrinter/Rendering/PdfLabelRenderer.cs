@@ -21,18 +21,25 @@ namespace PetShopLabelPrinter.Rendering
 
         public void Draw(XGraphics gfx, Product product, double offsetXMm, double offsetYMm)
         {
+            var labelWidthMm = _settings.LabelWidthMm > 0 ? _settings.LabelWidthMm : LabelRenderer.LabelWidthMm;
+            var labelHeightMm = _settings.LabelHeightMm > 0 ? _settings.LabelHeightMm : LabelRenderer.LabelHeightMm;
+            var rightWidthMm = _settings.RightColumnWidthMm > 0 ? _settings.RightColumnWidthMm : _settings.RightColWidthMm;
+            rightWidthMm = Math.Max(10, Math.Min(labelWidthMm - 10, rightWidthMm));
+            var leftWidthMm = labelWidthMm - rightWidthMm;
+            var borderMm = _settings.BorderThicknessMm > 0 ? _settings.BorderThicknessMm : _settings.LineThicknessMm;
+
             var ox = offsetXMm + _settings.OffsetXMm;
             var oy = offsetYMm + _settings.OffsetYMm;
-            var w = LabelRenderer.LabelWidthMm;
-            var h = LabelRenderer.LabelHeightMm;
+            var w = labelWidthMm;
+            var h = labelHeightMm;
 
             // Outer border (points)
-            var pen = new XPen(XColors.Black, MmToPt(_settings.LineThicknessMm));
+            var pen = new XPen(XColors.Black, MmToPt(borderMm));
             gfx.DrawRectangle(pen, MmToPt(ox), MmToPt(oy), MmToPt(w), MmToPt(h));
 
             var pad = _settings.PaddingMm;
-            var leftW = _settings.LeftColWidthMm;
-            var rightW = _settings.RightColWidthMm;
+            var leftW = leftWidthMm;
+            var rightW = rightWidthMm;
 
             // Left column
             DrawLeftColumn(gfx, product, ox + pad, oy + pad, leftW - pad * 2, h - pad * 2);
@@ -84,11 +91,28 @@ namespace PetShopLabelPrinter.Rendering
             var topH = _settings.RightTopHeightMm;
             var midH = _settings.RightMiddleHeightMm;
             var botH = _settings.RightBottomHeightMm;
-            var pen = new XPen(XColors.Black, MmToPt(_settings.LineThicknessMm));
+            var total = topH + midH + botH;
+            if (total <= 0)
+            {
+                topH = h / 3;
+                midH = h / 3;
+                botH = h / 3;
+            }
+            else
+            {
+                var scale = h / total;
+                topH *= scale;
+                midH *= scale;
+                botH *= scale;
+            }
+            var borderMm = _settings.BorderThicknessMm > 0 ? _settings.BorderThicknessMm : _settings.LineThicknessMm;
+            var pen = new XPen(XColors.Black, MmToPt(borderMm));
             var xPt = MmToPt(x); var yPt = MmToPt(y); var wPt = MmToPt(w);
 
-            gfx.DrawLine(pen, xPt, yPt + MmToPt(topH), xPt + wPt, yPt + MmToPt(topH));
-            gfx.DrawLine(pen, xPt, yPt + MmToPt(topH + midH), xPt + wPt, yPt + MmToPt(topH + midH));
+            if (_settings.ShowSeparatorBetweenPacks)
+                gfx.DrawLine(pen, xPt, yPt + MmToPt(topH), xPt + wPt, yPt + MmToPt(topH));
+            if (_settings.ShowBottomSeparator)
+                gfx.DrawLine(pen, xPt, yPt + MmToPt(topH + midH), xPt + wPt, yPt + MmToPt(topH + midH));
 
             var pad = _settings.PaddingMm;
 
@@ -127,8 +151,10 @@ namespace PetShopLabelPrinter.Rendering
         {
             var ox = MmToPt(offsetXMm + _settings.OffsetXMm);
             var oy = MmToPt(offsetYMm + _settings.OffsetYMm);
-            var w = MmToPt(LabelRenderer.LabelWidthMm);
-            var h = MmToPt(LabelRenderer.LabelHeightMm);
+            var labelWidthMm = _settings.LabelWidthMm > 0 ? _settings.LabelWidthMm : LabelRenderer.LabelWidthMm;
+            var labelHeightMm = _settings.LabelHeightMm > 0 ? _settings.LabelHeightMm : LabelRenderer.LabelHeightMm;
+            var w = MmToPt(labelWidthMm);
+            var h = MmToPt(labelHeightMm);
             var cropLen = MmToPt(cropLenMm);
             var pen = new XPen(XColors.Black, 0.2);
 

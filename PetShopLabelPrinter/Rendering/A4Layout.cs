@@ -4,42 +4,33 @@ using PetShopLabelPrinter.Models;
 namespace PetShopLabelPrinter.Rendering
 {
     /// <summary>
-    /// A4 portrait: 1 column x 7 rows. Label 150mm x 38mm, gap 2mm, margins 10mm.
+    /// A4 portrait packing computed from template settings.
     /// </summary>
     public static class A4Layout
     {
         public const double A4WidthMm = 210;
         public const double A4HeightMm = 297;
-        public const double MarginLeftMm = 10;
-        public const double MarginTopMm = 10;
-        public const double VerticalGapMm = 2;
-        public const int RowsPerPage = 7;
-        public const int ColsPerPage = 1;
-
-        public static double LabelWidthMm => LabelRenderer.LabelWidthMm;
-        public static double LabelHeightMm => LabelRenderer.LabelHeightMm;
 
         /// <summary>
         /// Returns list of (pageIndex, row, col, offsetXMm, offsetYMm) for each label.
         /// </summary>
-        public static List<LabelPosition> ComputePositions(IReadOnlyList<QueuedLabel> queue)
+        public static List<LabelPosition> ComputePositions(IReadOnlyList<QueuedLabel> queue, TemplateSettings settings)
         {
             var result = new List<LabelPosition>();
-            var total = 0;
-            foreach (var q in queue)
-                total += q.Quantity;
+            var layout = BuildLayout(settings);
 
             var idx = 0;
             foreach (var q in queue)
             {
                 for (var i = 0; i < q.Quantity; i++)
                 {
-                    var page = idx / RowsPerPage;
-                    var row = idx % RowsPerPage;
-                    var col = 0;
+                    var page = idx / layout.ItemsPerPage;
+                    var indexInPage = idx % layout.ItemsPerPage;
+                    var row = indexInPage / layout.Cols;
+                    var col = indexInPage % layout.Cols;
 
-                    var x = MarginLeftMm + col * (LabelWidthMm + 0);
-                    var y = MarginTopMm + row * (LabelHeightMm + VerticalGapMm);
+                    var x = layout.MarginMm + col * (layout.LabelWidthMm + layout.GapMm);
+                    var y = layout.MarginMm + row * (layout.LabelHeightMm + layout.GapMm);
 
                     result.Add(new LabelPosition
                     {
@@ -56,10 +47,53 @@ namespace PetShopLabelPrinter.Rendering
             return result;
         }
 
-        public static int PagesNeeded(int labelCount)
+        public static int PagesNeeded(int labelCount, TemplateSettings settings)
         {
             if (labelCount <= 0) return 0;
-            return (labelCount + RowsPerPage - 1) / RowsPerPage;
+            var layout = BuildLayout(settings);
+            return (labelCount + layout.ItemsPerPage - 1) / layout.ItemsPerPage;
+        }
+
+        private static LayoutInfo BuildLayout(TemplateSettings settings)
+        {
+            var s = settings ?? new TemplateSettings();
+            var labelW = s.LabelWidthMm > 0 ? s.LabelWidthMm : 150;
+            var labelH = s.LabelHeightMm > 0 ? s.LabelHeightMm : 38;
+            var margin = s.PageMarginMm >= 0 ? s.PageMarginMm : 10;
+            var gap = s.GapMm >= 0 ? s.GapMm : 2;
+
+            var usableW = A4WidthMm - margin * 2;
+            var usableH = A4HeightMm - margin * 2;
+            if (usableW <= 0 || usableH <= 0)
+                return new LayoutInfo(labelW, labelH, gap, margin, 1, 1);
+
+            var cols = (int)System.Math.Floor((usableW + gap) / (labelW + gap));
+            var rows = (int)System.Math.Floor((usableH + gap) / (labelH + gap));
+            if (cols < 1) cols = 1;
+            if (rows < 1) rows = 1;
+            return new LayoutInfo(labelW, labelH, gap, margin, rows, cols);
+        }
+
+        private sealed class LayoutInfo
+        {
+            public LayoutInfo(double labelWidthMm, double labelHeightMm, double gapMm, double marginMm, int rows, int cols)
+            {
+                LabelWidthMm = labelWidthMm;
+                LabelHeightMm = labelHeightMm;
+                GapMm = gapMm;
+                MarginMm = marginMm;
+                Rows = rows;
+                Cols = cols;
+                ItemsPerPage = Rows * Cols;
+            }
+
+            public double LabelWidthMm { get; }
+            public double LabelHeightMm { get; }
+            public double GapMm { get; }
+            public double MarginMm { get; }
+            public int Rows { get; }
+            public int Cols { get; }
+            public int ItemsPerPage { get; }
         }
     }
 

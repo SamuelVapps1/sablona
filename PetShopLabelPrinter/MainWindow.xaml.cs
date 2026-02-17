@@ -351,11 +351,17 @@ namespace PetShopLabelPrinter
             if (double.TryParse(TxtPriceBigSize.Text, out parsed)) s.PriceBigFontSizePt = parsed;
             s.PriceBigBold = ChkPriceBigBold.IsChecked == true;
 
-            if (double.TryParse(TxtLeftColMm.Text, out parsed)) s.LeftColWidthMm = parsed;
-            if (double.TryParse(TxtRightColMm.Text, out parsed)) s.RightColWidthMm = parsed;
+            if (double.TryParse(TxtLabelWidthMm.Text, out parsed)) s.LabelWidthMm = parsed;
+            if (double.TryParse(TxtLabelHeightMm.Text, out parsed)) s.LabelHeightMm = parsed;
+            if (double.TryParse(TxtRightColumnWidthMm.Text, out parsed)) s.RightColumnWidthMm = parsed;
+            if (double.TryParse(TxtBorderThicknessMm.Text, out parsed)) s.BorderThicknessMm = parsed;
+            if (double.TryParse(TxtGapMm.Text, out parsed)) s.GapMm = parsed;
+            if (double.TryParse(TxtPageMarginMm.Text, out parsed)) s.PageMarginMm = parsed;
             if (double.TryParse(TxtTopMm.Text, out parsed)) s.RightTopHeightMm = parsed;
             if (double.TryParse(TxtMidMm.Text, out parsed)) s.RightMiddleHeightMm = parsed;
             if (double.TryParse(TxtBotMm.Text, out parsed)) s.RightBottomHeightMm = parsed;
+            s.ShowSeparatorBetweenPacks = ChkShowSeparatorBetweenPacks.IsChecked == true;
+            s.ShowBottomSeparator = ChkShowBottomSeparator.IsChecked == true;
             s.CropMarksEnabled = ChkCropMarks.IsChecked == true;
             if (double.TryParse(TxtOffsetX.Text, out parsed)) s.OffsetXMm = parsed;
             if (double.TryParse(TxtOffsetY.Text, out parsed)) s.OffsetYMm = parsed;
@@ -378,11 +384,17 @@ namespace PetShopLabelPrinter
             TxtPriceBigSize.Text = s.PriceBigFontSizePt.ToString("0.##");
             ChkPriceBigBold.IsChecked = s.PriceBigBold;
 
-            TxtLeftColMm.Text = s.LeftColWidthMm.ToString("0.##");
-            TxtRightColMm.Text = s.RightColWidthMm.ToString("0.##");
+            TxtLabelWidthMm.Text = s.LabelWidthMm.ToString("0.##");
+            TxtLabelHeightMm.Text = s.LabelHeightMm.ToString("0.##");
+            TxtRightColumnWidthMm.Text = s.RightColumnWidthMm.ToString("0.##");
+            TxtBorderThicknessMm.Text = s.BorderThicknessMm.ToString("0.##");
+            TxtGapMm.Text = s.GapMm.ToString("0.##");
+            TxtPageMarginMm.Text = s.PageMarginMm.ToString("0.##");
             TxtTopMm.Text = s.RightTopHeightMm.ToString("0.##");
             TxtMidMm.Text = s.RightMiddleHeightMm.ToString("0.##");
             TxtBotMm.Text = s.RightBottomHeightMm.ToString("0.##");
+            ChkShowSeparatorBetweenPacks.IsChecked = s.ShowSeparatorBetweenPacks;
+            ChkShowBottomSeparator.IsChecked = s.ShowBottomSeparator;
             ChkCropMarks.IsChecked = s.CropMarksEnabled;
             TxtOffsetX.Text = s.OffsetXMm.ToString("0.##");
             TxtOffsetY.Text = s.OffsetYMm.ToString("0.##");
@@ -433,8 +445,10 @@ namespace PetShopLabelPrinter
             var s = GetSettingsFromForm();
             var previewProduct = GetPreviewProduct();
 
-            var w = Units.MmToWpfUnits(LabelRenderer.LabelWidthMm);
-            var h = Units.MmToWpfUnits(LabelRenderer.LabelHeightMm);
+            var labelWidthMm = s.LabelWidthMm > 0 ? s.LabelWidthMm : LabelRenderer.LabelWidthMm;
+            var labelHeightMm = s.LabelHeightMm > 0 ? s.LabelHeightMm : LabelRenderer.LabelHeightMm;
+            var w = Units.MmToWpfUnits(labelWidthMm);
+            var h = Units.MmToWpfUnits(labelHeightMm);
             PreviewCanvas.Children.Clear();
             PreviewCanvas.Width = w;
             PreviewCanvas.Height = h;

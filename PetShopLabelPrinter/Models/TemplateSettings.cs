@@ -37,6 +37,15 @@ namespace PetShopLabelPrinter.Models
         public int UnitPriceSmallAlign { get; set; } = 0;
 
         // Layout mm
+        public double LabelWidthMm { get; set; } = 150;
+        public double LabelHeightMm { get; set; } = 38;
+        public double RightColumnWidthMm { get; set; } = 58;
+        public double BorderThicknessMm { get; set; } = 0.2;
+        public bool ShowSeparatorBetweenPacks { get; set; } = true;
+        public bool ShowBottomSeparator { get; set; } = false;
+        public double GapMm { get; set; } = 2;
+        public double PageMarginMm { get; set; } = 10;
+
         public double LeftColWidthMm { get; set; } = 90;
         public double RightColWidthMm { get; set; } = 58;
         public double RightTopHeightMm { get; set; } = 12;
