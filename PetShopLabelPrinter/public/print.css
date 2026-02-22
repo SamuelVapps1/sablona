@@ -1,0 +1,70 @@
+/* PRINT BASELINE v1.0 - Label printing (80mm x 40mm) */
+
+@media print {
+  /* Zero browser margins, exact page size */
+  @page {
+    size: 80mm 40mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 80mm;
+    min-height: 40mm;
+    background: #fff;
+    color: #000;
+    font-family: Inter, Arial, system-ui, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide navigation, buttons, app chrome */
+  nav,
+  header:not(.label-header),
+  footer,
+  button,
+  .no-print,
+  [role="navigation"],
+  [role="banner"] {
+    display: none !important;
+  }
+
+  /* One label per printed page */
+  .label {
+    width: 80mm;
+    height: 40mm;
+    box-sizing: border-box;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+    background: #fff;
+    color: #000;
+    font-family: Inter, Arial, system-ui, sans-serif;
+  }
+
+  .label:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Sharp, high-contrast text */
+  .label,
+  .label * {
+    color: #000 !important;
+    background: transparent !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  .label {
+    background: #fff !important;
+  }
+
+  /* Debug: thin outlines for alignment testing */
+  .debug-print .label {
+    outline: 1px solid #999;
+    outline-offset: -1px;
+  }
+}

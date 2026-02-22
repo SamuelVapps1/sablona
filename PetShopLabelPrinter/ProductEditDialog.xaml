@@ -1,15 +1,18 @@
 <Window x:Class="PetShopLabelPrinter.ProductEditDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Produkt" Height="480" Width="420" WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize">
+        Title="Produkt" Height="690" Width="430" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize" Loaded="Window_Loaded">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="16">
             <TextBlock Text="Názov produktu" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtProductName" Margin="0,0,0,12" Padding="6,4"/>
 
             <TextBlock Text="Varianta" Margin="0,0,0,4"/>
-            <TextBox x:Name="TxtVariantText" Margin="0,0,0,12" Padding="6,4"/>
+            <TextBox x:Name="TxtVariantText" Margin="0,0,0,12" Padding="6,4" TextWrapping="Wrap" AcceptsReturn="True" MinLines="2" MaxLines="4" VerticalScrollBarVisibility="Auto"/>
+
+            <TextBlock Text="Šablóna štítku" Margin="0,0,0,4"/>
+            <ComboBox x:Name="CmbTemplate" DisplayMemberPath="Name" Margin="0,0,0,12"/>
 
             <TextBlock Text="Malé balenie (napr. Balenie 1 kg)" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtSmallPackLabel" Margin="0,0,0,4" Padding="6,4"/>
@@ -25,6 +28,13 @@
                 <TextBlock Text="Cena:" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBox x:Name="TxtSmallPackPrice" Grid.Column="3" Padding="6,4"/>
             </Grid>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                <TextBlock Text="Jednotka hmotnosti:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <ComboBox x:Name="CmbPackUnit" Width="80" SelectedIndex="0">
+                    <ComboBoxItem Content="kg"/>
+                    <ComboBoxItem Content="g"/>
+                </ComboBox>
+            </StackPanel>
 
             <TextBlock Text="Veľké balenie (napr. Balenie 17 kg)" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtLargePackLabel" Margin="0,0,0,4" Padding="6,4"/>
@@ -43,6 +53,31 @@
 
             <TextBlock Text="Cena za kg - prepísať (voliteľné, prázdne = vypočítané)" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtUnitPriceOverride" Margin="0,0,0,12" Padding="6,4" ToolTip="Napríklad 2,70"/>
+
+            <GroupBox Header="Voliteľné polia" Padding="8" Margin="0,0,0,12">
+                <StackPanel>
+                    <CheckBox x:Name="ChkShowEan" Content="EAN" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtEan" Margin="20,0,0,8" Padding="6,4" IsEnabled="{Binding IsChecked, ElementName=ChkShowEan}"/>
+                    <CheckBox x:Name="ChkShowSku" Content="SKU" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtSku" Margin="20,0,0,8" Padding="6,4" IsEnabled="{Binding IsChecked, ElementName=ChkShowSku}"/>
+                    <CheckBox x:Name="ChkShowExpiry" Content="Dátum spotreby" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TxtExpiryDate" Margin="20,0,0,8" Padding="6,4" IsEnabled="{Binding IsChecked, ElementName=ChkShowExpiry}" ToolTip="YYYY-MM-DD"/>
+                    <CheckBox x:Name="ChkBarcodeEnabled" Content="Čiarový kód" Margin="0,8,0,4"/>
+                    <StackPanel Margin="20,0,0,0" IsEnabled="{Binding IsChecked, ElementName=ChkBarcodeEnabled}">
+                        <TextBlock Text="Hodnota čiarového kódu (EAN/SKU)" Margin="0,0,0,2" FontSize="11" Foreground="Gray"/>
+                        <TextBox x:Name="TxtBarcodeValue" Padding="6,4" Margin="0,0,0,2" TextChanged="TxtBarcodeValue_TextChanged"/>
+                        <TextBlock x:Name="TxtBarcodeWarning" Text="Neplatný EAN-13" Foreground="Red" FontSize="11" Margin="0,0,0,4" Visibility="Collapsed"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                            <TextBlock Text="Typ:" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox x:Name="CmbBarcodeFormat" Width="100" SelectedIndex="0" SelectionChanged="CmbBarcodeFormat_SelectionChanged">
+                                <ComboBoxItem Content="EAN13"/>
+                                <ComboBoxItem Content="CODE128"/>
+                            </ComboBox>
+                        </StackPanel>
+                        <CheckBox x:Name="ChkBarcodeShowText" Content="Zobraziť text pod kódom" IsChecked="True"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
 
             <TextBlock Text="Poznámky" Margin="0,0,0,4"/>
             <TextBox x:Name="TxtNotes" Margin="0,0,0,16" Padding="6,4" TextWrapping="Wrap" AcceptsReturn="True" Height="60" VerticalScrollBarVisibility="Auto"/>

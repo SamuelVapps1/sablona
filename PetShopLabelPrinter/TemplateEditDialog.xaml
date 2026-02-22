@@ -1,0 +1,64 @@
+<Window x:Class="PetShopLabelPrinter.TemplateEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Šablóna štítku" Height="430" Width="360" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <StackPanel Margin="16">
+        <TextBlock Text="Názov" Margin="0,0,0,4"/>
+        <TextBox x:Name="TxtName" Padding="6,4" Margin="0,0,0,12"/>
+        <Grid Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                <TextBlock Text="Šírka (mm)" Margin="0,0,0,4"/>
+                <TextBox x:Name="TxtWidthMm" Padding="6,4"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1">
+                <TextBlock Text="Výška (mm)" Margin="0,0,0,4"/>
+                <TextBox x:Name="TxtHeightMm" Padding="6,4"/>
+            </StackPanel>
+        </Grid>
+        <TextBlock Text="Okraj/padding (mm)" Margin="0,0,0,4"/>
+        <TextBox x:Name="TxtPaddingMm" Padding="6,4" Margin="0,0,0,12"/>
+
+        <GroupBox Header="Kalibrácia tlače" Margin="0,0,0,12" Padding="8">
+            <StackPanel>
+                <TextBlock Text="Použite pri nesediacich okrajoch / mierke." Foreground="Gray" Margin="0,0,0,8"/>
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Offset X (mm)" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtOffsetXmm" Padding="6,4"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Offset Y (mm)" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtOffsetYmm" Padding="6,4"/>
+                    </StackPanel>
+                </Grid>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Scale X (%)" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtScaleX" Padding="6,4"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="Scale Y (%)" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtScaleY" Padding="6,4"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </GroupBox>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Click="BtnSave_Click" Content="Uložiť" IsDefault="True" Padding="16,8" Margin="0,0,8,0"/>
+            <Button Click="BtnCancel_Click" Content="Zrušiť" IsCancel="True" Padding="16,8"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

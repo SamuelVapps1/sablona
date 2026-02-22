@@ -4,17 +4,17 @@
 winexe
 C#
 .cs
-c:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Debug\net462\
+C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Debug\net462\
 PetShopLabelPrinter
 none
 false
 TRACE;DEBUG;NETFRAMEWORK;NET462;NET30_OR_GREATER;NET35_OR_GREATER;NET40_OR_GREATER;NET45_OR_GREATER;NET451_OR_GREATER;NET452_OR_GREATER;NET46_OR_GREATER;NET461_OR_GREATER;NET462_OR_GREATER
-c:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\App.xaml
-31086474510
+C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\App.xaml
+10674745370
 
-17-197283
-1501033496974
-AdminPinDialog.xaml;MainWindow.xaml;ProductEditDialog.xaml;
+31579387786
+152-434192784
+A4SettingsDialog.xaml;AdminPinDialog.xaml;CopiesDialog.xaml;CsvExportDialog.xaml;CsvImportWizardDialog.xaml;MainWindow.xaml;ProductEditDialog.xaml;TemplateEditDialog.xaml;TemplateManageDialog.xaml;TemplateSelectDialog.xaml;
 
 False
 

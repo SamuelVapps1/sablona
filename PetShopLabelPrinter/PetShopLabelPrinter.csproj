@@ -14,6 +14,7 @@
     <PackageReference Include="PDFsharp-wpf" Version="6.2.4" />
     <PackageReference Include="System.Data.SQLite.Core" Version="1.0.118" />
     <PackageReference Include="System.Text.Json" Version="6.0.10" />
+    <PackageReference Include="ZXing.Net" Version="0.16.9" />
   </ItemGroup>
 
   <ItemGroup>

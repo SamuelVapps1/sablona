@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj": {}
+    "C:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj": {}
   },
   "projects": {
-    "c:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj": {
+    "C:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj",
+        "projectUniqueName": "C:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj",
         "projectName": "PetShopLabelPrinter",
-        "projectPath": "c:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj",
+        "projectPath": "C:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj",
         "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\obj\\",
+        "outputPath": "C:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -57,6 +57,10 @@
             "System.Text.Json": {
               "target": "Package",
               "version": "[6.0.10, )"
+            },
+            "ZXing.Net": {
+              "target": "Package",
+              "version": "[0.16.9, )"
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103\\RuntimeIdentifierGraph.json"

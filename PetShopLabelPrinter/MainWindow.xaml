@@ -6,10 +6,18 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <DockPanel Grid.Row="0" Margin="8">
+        <Menu Grid.Row="0" Margin="0,0,0,4">
+            <MenuItem Header="Súbor">
+                <MenuItem Header="Import z Alfa+ (CSV)" Click="MenuImportAlfa_Click"/>
+                <MenuItem Header="Export do CSV" Click="MenuExportCsv_Click"/>
+            </MenuItem>
+        </Menu>
+
+        <DockPanel Grid.Row="1" Margin="8">
             <StackPanel Orientation="Horizontal">
                 <Button x:Name="BtnUserMode" Content="Používateľ" Click="BtnUserMode_Click" Padding="12,6" Margin="0,0,6,0"/>
                 <Button x:Name="BtnAdminMode" Content="Admin" Click="BtnAdminMode_Click" Padding="12,6" Margin="0,0,12,0"/>
@@ -19,7 +27,7 @@
                      ToolTip="Filtrovať podľa názvu/varianty"/>
         </DockPanel>
 
-        <Grid x:Name="UserPanel" Grid.Row="1" Margin="8">
+        <Grid x:Name="UserPanel" Grid.Row="2" Margin="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="300"/>
@@ -33,11 +41,31 @@
                       SelectionMode="Extended"
                       SelectionUnit="FullRow"
                       RowEditEnding="ProductGrid_RowEditEnding"
-                      SelectionChanged="ProductGrid_SelectionChanged">
+                      SelectionChanged="ProductGrid_SelectionChanged"
+                      MouseDoubleClick="ProductGrid_MouseDoubleClick">
+                <DataGrid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Upraviť" Click="ProductGrid_EditClick"/>
+                        <MenuItem Header="Nastaviť šablónu..." Click="ProductGrid_SetTemplateClick"/>
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
                 <DataGrid.Columns>
                     <DataGridCheckBoxColumn Header="Tlačiť?" Binding="{Binding IsActiveForPrint, UpdateSourceTrigger=PropertyChanged}" Width="62"/>
                     <DataGridTextColumn Header="Produkt" Binding="{Binding ProductName, UpdateSourceTrigger=LostFocus}" Width="180"/>
-                    <DataGridTextColumn Header="Varianta" Binding="{Binding VariantText, UpdateSourceTrigger=LostFocus}" Width="140"/>
+                    <DataGridTextColumn Header="Šablóna" Binding="{Binding TemplateName}" Width="120" IsReadOnly="True"/>
+                    <DataGridTemplateColumn Header="Varianta" Width="140">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding VariantText}" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                        <DataGridTemplateColumn.CellEditingTemplate>
+                            <DataTemplate>
+                                <TextBox Text="{Binding VariantText, UpdateSourceTrigger=LostFocus}" BorderThickness="0" Background="Transparent"
+                                         TextWrapping="Wrap" AcceptsReturn="True" MinLines="1" MaxLines="3" VerticalScrollBarVisibility="Auto"/>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Bal. malé text" Binding="{Binding SmallPackLabel, UpdateSourceTrigger=LostFocus}" Width="130"/>
                     <DataGridTextColumn Header="Malé balenie cena" Binding="{Binding SmallPackPrice, UpdateSourceTrigger=LostFocus}" Width="95"/>
                     <DataGridTextColumn Header="Bal. veľké text" Binding="{Binding LargePackLabel, UpdateSourceTrigger=LostFocus}" Width="130"/>
@@ -48,8 +76,29 @@
             </DataGrid>
 
             <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                <TextBlock Text="Šablóna štítku" Margin="0,0,0,4"/>
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="CmbLabelTemplate" Grid.Column="0" DisplayMemberPath="Name" SelectionChanged="CmbLabelTemplate_SelectionChanged"/>
+                    <Button x:Name="BtnManageTemplates" Grid.Column="1" Content="..." Width="32" Margin="6,0,0,0" Padding="4,2" Click="BtnManageTemplates_Click" ToolTip="Spravovať šablóny"/>
+                </Grid>
+                <GroupBox Header="Alfa+ Sync" Padding="8" Margin="0,0,0,6">
+                    <StackPanel>
+                        <WrapPanel>
+                            <Button x:Name="BtnAlfaImport" Content="Import z Alfa+ (CSV)" Click="MenuImportAlfa_Click" Padding="8,4" Margin="0,0,6,0"/>
+                            <Button x:Name="BtnAlfaExport" Content="Export do CSV" Click="MenuExportCsv_Click" Padding="8,4"/>
+                        </WrapPanel>
+                        <TextBlock x:Name="TxtLastAlfaImport" Margin="0,6,0,0" Foreground="Gray"/>
+                    </StackPanel>
+                </GroupBox>
+                <Button x:Name="BtnA4Settings" Content="A4 nastavenia" Click="BtnA4Settings_Click" Padding="12,8" Margin="0,0,0,6"/>
+                <Button x:Name="BtnEditSelected" Content="Upraviť" Click="BtnEditSelected_Click" Padding="12,8" Margin="0,0,0,6" IsEnabled="False" ToolTip="Otvoriť dialóg úpravy vybraného riadku (alebo dvojklik)"/>
                 <Button x:Name="BtnPrintSelected" Content="Tlačiť A4 (vybrané)" Click="BtnPrintSelected_Click" Padding="12,8" Margin="0,0,0,6"/>
                 <Button x:Name="BtnExportSelected" Content="Export PDF (vybrané)" Click="BtnExportSelected_Click" Padding="12,8" Margin="0,0,0,6"/>
+                <Button x:Name="BtnCalibrationTestPrint" Content="Test print (kalibrácia)" Click="BtnCalibrationTestPrint_Click" Padding="12,8" Margin="0,0,0,6"/>
                 <Button x:Name="BtnClearSelection" Content="Vyčistiť výber/frontu" Click="BtnClearSelection_Click" Padding="12,8" Margin="0,0,0,6"/>
                 <Button x:Name="BtnDeleteSelectedProducts" Content="Zmazať vybrané riadky" Click="BtnDeleteSelectedProducts_Click" Padding="12,8" Margin="0,0,0,12"/>
 
@@ -72,7 +121,7 @@
             </StackPanel>
         </Grid>
 
-        <ScrollViewer x:Name="AdminPanel" Grid.Row="1" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="AdminPanel" Grid.Row="2" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="16">
                 <GroupBox Header="Písmo" Padding="12" Margin="0,0,0,8">
                     <Grid>

@@ -48,18 +48,66 @@ namespace PetShopLabelPrinter
             LoadHistory();
             LoadPrinterList();
             LoadFontLists();
+            LoadLabelTemplates();
             LoadAdminSettings();
+            UpdateAlfaSyncStatus();
             SwitchToUserMode();
             UpdateHistoryActions();
+        }
+
+        private void LoadLabelTemplates()
+        {
+            var templates = _db.GetLabelTemplates();
+            CmbLabelTemplate.ItemsSource = templates;
+            var lastId = _db.GetSetting("LastTemplateId");
+            if (!string.IsNullOrWhiteSpace(lastId) && int.TryParse(lastId, out var id))
+            {
+                var match = templates.FirstOrDefault(t => t.Id == id);
+                CmbLabelTemplate.SelectedItem = match ?? templates.FirstOrDefault();
+            }
+            else
+            {
+                CmbLabelTemplate.SelectedItem = templates.FirstOrDefault();
+            }
+        }
+
+        private LabelTemplate? GetActiveTemplate()
+        {
+            return CmbLabelTemplate.SelectedItem as LabelTemplate;
+        }
+
+        private void CmbLabelTemplate_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (GetActiveTemplate() is LabelTemplate t)
+                _db.SetSetting("LastTemplateId", t.Id.ToString());
+            RefreshPreview();
+        }
+
+        private void BtnManageTemplates_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new TemplateManageDialog(_db) { Owner = this };
+            dlg.ShowDialog();
+            LoadLabelTemplates();
+            RefreshPreview();
+        }
+
+        private void BtnA4Settings_Click(object sender, RoutedEventArgs e)
+        {
+            var current = _db.GetA4SheetSettings();
+            var dlg = new A4SettingsDialog(current, _printService) { Owner = this };
+            if (dlg.ShowDialog() == true)
+                _db.SaveA4SheetSettings(dlg.Settings);
         }
 
         private void LoadProducts()
         {
             _products.Clear();
+            var templateMap = _db.GetLabelTemplates().ToDictionary(t => t.Id, t => t.Name);
             foreach (var p in _db.SearchProducts(string.Empty))
             {
                 if (p.Quantity < 1) p.Quantity = 1;
                 p.IsActiveForPrint = false;
+                p.TemplateName = p.TemplateId.HasValue && templateMap.TryGetValue(p.TemplateId.Value, out var n) ? n : "(Aktívna)";
                 _products.Add(p);
             }
             ApplySearchFilter();
@@ -75,7 +123,9 @@ namespace PetShopLabelPrinter
                 if (p == null) return false;
                 if (term.Length == 0) return true;
                 return (p.ProductName ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
-                       || (p.VariantText ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
+                       || (p.VariantText ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
+                       || (p.Ean ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0
+                       || (p.Sku ?? "").IndexOf(term, StringComparison.OrdinalIgnoreCase) >= 0;
             };
             _productView.Refresh();
         }
@@ -133,7 +183,63 @@ namespace PetShopLabelPrinter
 
         private void ProductGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            BtnEditSelected.IsEnabled = ProductGrid.SelectedItem != null;
             RefreshPreview();
+        }
+
+        private void ProductGrid_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            TryEditSelectedProduct();
+        }
+
+        private void BtnEditSelected_Click(object sender, RoutedEventArgs e)
+        {
+            TryEditSelectedProduct();
+        }
+
+        private void ProductGrid_EditClick(object sender, RoutedEventArgs e)
+        {
+            TryEditSelectedProduct();
+        }
+
+        private void ProductGrid_SetTemplateClick(object sender, RoutedEventArgs e)
+        {
+            var selected = ProductGrid.SelectedItems.Cast<object>().OfType<Product>().ToList();
+            if (selected.Count == 0)
+            {
+                MessageBox.Show("Najprv vyberte riadky.", "Šablóna", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var templates = _db.GetLabelTemplates();
+            var dlg = new TemplateSelectDialog(templates) { Owner = this };
+            if (dlg.ShowDialog() != true || !dlg.SelectedTemplateId.HasValue) return;
+            var tplName = templates.FirstOrDefault(t => t.Id == dlg.SelectedTemplateId.Value)?.Name ?? "(Aktívna)";
+            foreach (var p in selected)
+            {
+                p.TemplateId = dlg.SelectedTemplateId.Value;
+                p.TemplateName = tplName;
+                if (p.Id > 0) _db.UpdateProduct(p);
+            }
+            ProductGrid.Items.Refresh();
+            RefreshPreview();
+        }
+
+        private void TryEditSelectedProduct()
+        {
+            if (ProductGrid.SelectedItem is not Product p)
+            {
+                MessageBox.Show("Vyberte riadok na úpravu.", "Upraviť", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            var dlg = new ProductEditDialog(_db, p) { Owner = this };
+            if (dlg.ShowDialog() == true)
+            {
+                NormalizeProduct(dlg.Product);
+                if (dlg.Product.Id == 0) _db.InsertProduct(dlg.Product);
+                else _db.UpdateProduct(dlg.Product);
+                LoadProducts();
+                RefreshPreview();
+            }
         }
 
         private void NormalizeProduct(Product p)
@@ -144,6 +250,18 @@ namespace PetShopLabelPrinter
             p.SmallPackLabel = (p.SmallPackLabel ?? "").Trim();
             p.LargePackLabel = (p.LargePackLabel ?? "").Trim();
             p.UnitPriceText = (p.UnitPriceText ?? "").Trim();
+            p.PackWeightUnit = string.Equals(p.PackWeightUnit, "g", StringComparison.OrdinalIgnoreCase) ? "g" : "kg";
+            if (!p.PackWeightValue.HasValue && p.SmallPackWeightKg.HasValue)
+                p.PackWeightValue = p.SmallPackWeightKg.Value;
+            p.SmallPackWeightKg = p.PackWeightValue.HasValue
+                ? (p.PackWeightUnit == "g" ? p.PackWeightValue.Value / 1000m : p.PackWeightValue.Value)
+                : p.SmallPackWeightKg;
+            p.Ean = p.ShowEan && !string.IsNullOrWhiteSpace(p.Ean)
+                ? new string(p.Ean.Where(c => char.IsDigit(c)).ToArray()) : (string.IsNullOrWhiteSpace(p.Ean) ? null : p.Ean.Trim());
+            p.Sku = string.IsNullOrWhiteSpace(p.Sku) ? null : p.Sku.Trim();
+            p.ExpiryDate = string.IsNullOrWhiteSpace(p.ExpiryDate) ? null : p.ExpiryDate.Trim();
+            p.BarcodeValue = p.BarcodeEnabled && !string.IsNullOrWhiteSpace(p.BarcodeValue)
+                ? BarcodeRenderer.NormalizeBarcodeValue(p.BarcodeValue, p.BarcodeFormat) : (string.IsNullOrWhiteSpace(p.BarcodeValue) ? null : p.BarcodeValue.Trim());
         }
 
         private void SaveAllProducts()
@@ -169,10 +287,11 @@ namespace PetShopLabelPrinter
                 : ProductGrid.SelectedItems.Cast<object>().OfType<Product>().ToList();
 
             var queue = new List<QueuedLabel>();
+            var activeTemplateId = GetActiveTemplate()?.Id;
             foreach (var p in sourceRows)
             {
                 var qty = p.Quantity < 1 ? 1 : p.Quantity;
-                queue.Add(new QueuedLabel { Product = p, Quantity = qty });
+                queue.Add(new QueuedLabel { Product = p, Quantity = qty, TemplateId = p.TemplateId ?? activeTemplateId });
             }
             return queue;
         }
@@ -182,6 +301,17 @@ namespace PetShopLabelPrinter
             var names = queue.Select(q => q.Product.ProductName).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList();
             if (names.Count <= 4) return string.Join(", ", names);
             return string.Join(", ", names.Take(4)) + $" (+{names.Count - 4})";
+        }
+
+        private static List<QueuedLabel> ApplyCopiesMultiplier(IReadOnlyList<QueuedLabel> queue, int multiplier)
+        {
+            var m = multiplier < 1 ? 1 : multiplier;
+            return queue.Select(q => new QueuedLabel
+            {
+                Product = q.Product,
+                Quantity = Math.Max(1, q.Quantity) * m,
+                TemplateId = q.TemplateId
+            }).ToList();
         }
 
         private void BtnPrintSelected_Click(object sender, RoutedEventArgs e)
@@ -194,14 +324,18 @@ namespace PetShopLabelPrinter
                 return;
             }
 
-            if (_printService.PrintSilent(queue))
+            var copiesDlg = new CopiesDialog(1) { Owner = this };
+            if (copiesDlg.ShowDialog() != true) return;
+            var printQueue = ApplyCopiesMultiplier(queue, copiesDlg.Copies);
+
+            if (_printService.PrintSilent(printQueue, GetEffectiveSettings()))
             {
                 _db.AddPrintHistory(new PrintHistoryItem
                 {
                     PrintedAt = DateTime.Now,
                     JobType = "PRINT",
-                    ProductNames = BuildHistoryNames(queue),
-                    TotalLabels = queue.Sum(q => q.Quantity),
+                    ProductNames = BuildHistoryNames(printQueue),
+                    TotalLabels = printQueue.Sum(q => q.Quantity),
                     PdfPath = ""
                 });
                 LoadHistory();
@@ -218,6 +352,10 @@ namespace PetShopLabelPrinter
                 return;
             }
 
+            var copiesDlg = new CopiesDialog(1) { Owner = this };
+            if (copiesDlg.ShowDialog() != true) return;
+            var exportQueue = ApplyCopiesMultiplier(queue, copiesDlg.Copies);
+
             var dlg = new SaveFileDialog
             {
                 Filter = "PDF|*.pdf",
@@ -225,13 +363,22 @@ namespace PetShopLabelPrinter
             };
             if (dlg.ShowDialog() != true) return;
 
-            var path = _pdfService.ExportToPdf(queue, dlg.FileName);
+            string path;
+            try
+            {
+                path = _pdfService.ExportToPdf(exportQueue, dlg.FileName, GetEffectiveSettings());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Export PDF", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             _db.AddPrintHistory(new PrintHistoryItem
             {
                 PrintedAt = DateTime.Now,
                 JobType = "EXPORT",
-                ProductNames = BuildHistoryNames(queue),
-                TotalLabels = queue.Sum(q => q.Quantity),
+                ProductNames = BuildHistoryNames(exportQueue),
+                TotalLabels = exportQueue.Sum(q => q.Quantity),
                 PdfPath = path
             });
             LoadHistory();
@@ -333,6 +480,28 @@ namespace PetShopLabelPrinter
             TxtMode.Text = "Režim: Admin";
             LoadAdminSettings();
             RefreshPreview();
+        }
+
+        private TemplateSettings GetEffectiveSettings()
+        {
+            var s = GetSettingsFromForm();
+            var t = GetActiveTemplate();
+            if (t != null)
+            {
+                s.LabelWidthMm = t.WidthMm;
+                s.LabelHeightMm = t.HeightMm;
+                s.PaddingMm = t.PaddingMm;
+                s.OffsetXMm = Clamp(t.OffsetXmm, -5, 5);
+                s.OffsetYMm = Clamp(t.OffsetYmm, -5, 5);
+                s.CalibrationScaleX = Clamp(t.ScaleX, 0.90, 1.10);
+                s.CalibrationScaleY = Clamp(t.ScaleY, 0.90, 1.10);
+            }
+            return s;
+        }
+
+        private static double Clamp(double value, double min, double max)
+        {
+            return Math.Max(min, Math.Min(max, value));
         }
 
         private TemplateSettings GetSettingsFromForm()
@@ -442,7 +611,7 @@ namespace PetShopLabelPrinter
 
         private void RefreshPreview()
         {
-            var s = GetSettingsFromForm();
+            var s = GetEffectiveSettings();
             var previewProduct = GetPreviewProduct();
 
             var labelWidthMm = s.LabelWidthMm > 0 ? s.LabelWidthMm : LabelRenderer.LabelWidthMm;
@@ -499,6 +668,46 @@ namespace PetShopLabelPrinter
             }
             if (!_calibService.PrintTestPdf(printer!))
                 MessageBox.Show("Nepodarilo sa odoslať test na tlačiareň.", "Tlač testu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private void BtnCalibrationTestPrint_Click(object sender, RoutedEventArgs e)
+        {
+            if (GetActiveTemplate() is not LabelTemplate t)
+            {
+                MessageBox.Show("Najprv vyberte šablónu štítku.", "Kalibrácia", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var settings = GetEffectiveSettings();
+            if (!_printService.PrintCalibrationTestPage(settings, t))
+                MessageBox.Show("Nepodarilo sa vytlačiť test kalibrácie.", "Kalibrácia", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private void MenuImportAlfa_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new CsvImportWizardDialog(_db) { Owner = this };
+            if (dlg.ShowDialog() == true)
+            {
+                _db.SetSetting("LastAlfaImportAt", DateTime.Now.ToString("o"));
+                UpdateAlfaSyncStatus();
+                LoadProducts();
+            }
+        }
+
+        private void MenuExportCsv_Click(object sender, RoutedEventArgs e)
+        {
+            SaveAllProducts();
+            var dlg = new CsvExportDialog(_products.ToList(), _db) { Owner = this };
+            dlg.ShowDialog();
+        }
+
+        private void UpdateAlfaSyncStatus()
+        {
+            var last = _db.GetSetting("LastAlfaImportAt");
+            if (!string.IsNullOrWhiteSpace(last) && DateTime.TryParse(last, out var parsed))
+                TxtLastAlfaImport.Text = $"Posledný import: {parsed:g}";
+            else
+                TxtLastAlfaImport.Text = "Posledný import: nikdy";
         }
 
         private void BtnClearHistory_Click(object sender, RoutedEventArgs e)

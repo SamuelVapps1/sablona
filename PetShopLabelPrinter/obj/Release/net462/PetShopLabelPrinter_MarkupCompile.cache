@@ -10,11 +10,11 @@ none
 false
 TRACE;RELEASE;NETFRAMEWORK;NET462;NET30_OR_GREATER;NET35_OR_GREATER;NET40_OR_GREATER;NET45_OR_GREATER;NET451_OR_GREATER;NET452_OR_GREATER;NET46_OR_GREATER;NET461_OR_GREATER;NET462_OR_GREATER
 C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\App.xaml
-31086474510
+9-641757485
 
-17-197283
-1502005374129
-AdminPinDialog.xaml;MainWindow.xaml;ProductEditDialog.xaml;
+30-2066238479
+152-434192784
+A4SettingsDialog.xaml;AdminPinDialog.xaml;CopiesDialog.xaml;CsvExportDialog.xaml;CsvImportWizardDialog.xaml;MainWindow.xaml;ProductEditDialog.xaml;TemplateEditDialog.xaml;TemplateManageDialog.xaml;
 
 False
 

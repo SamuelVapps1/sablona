@@ -1,0 +1,34 @@
+<Window x:Class="PetShopLabelPrinter.A4SettingsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="A4 nastavenia" Height="340" Width="380" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <StackPanel Margin="16">
+        <WrapPanel Margin="0,0,0,8">
+            <TextBlock Text="Margin (mm)" VerticalAlignment="Center"/>
+            <TextBox x:Name="TxtMargin" Width="64" Margin="8,0,16,0"/>
+            <TextBlock Text="Gap (mm)" VerticalAlignment="Center"/>
+            <TextBox x:Name="TxtGap" Width="64" Margin="8,0,0,0"/>
+        </WrapPanel>
+        <WrapPanel Margin="0,0,0,8">
+            <TextBlock Text="Scale X (%)" VerticalAlignment="Center"/>
+            <TextBox x:Name="TxtScaleX" Width="64" Margin="8,0,16,0"/>
+            <TextBlock Text="Scale Y (%)" VerticalAlignment="Center"/>
+            <TextBox x:Name="TxtScaleY" Width="64" Margin="8,0,0,0"/>
+        </WrapPanel>
+        <WrapPanel Margin="0,0,0,12">
+            <TextBlock Text="Offset X (mm)" VerticalAlignment="Center"/>
+            <TextBox x:Name="TxtOffsetX" Width="64" Margin="8,0,16,0"/>
+            <TextBlock Text="Offset Y (mm)" VerticalAlignment="Center"/>
+            <TextBox x:Name="TxtOffsetY" Width="64" Margin="8,0,0,0"/>
+        </WrapPanel>
+        <CheckBox x:Name="ChkDebugLayout" Content="Debug layout" Margin="0,0,0,12"/>
+        <TextBlock Foreground="Gray" Margin="0,0,0,12"
+                   Text="Globálna A4 kalibrácia sa aplikuje na celý hárok: najprv scale, potom offset."/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnTestPrintA4" Content="Test print A4" Click="BtnTestPrintA4_Click" Padding="12,8" Margin="0,0,8,0"/>
+            <Button x:Name="BtnSave" Content="Uložiť" Click="BtnSave_Click" IsDefault="True" Padding="12,8" Margin="0,0,8,0"/>
+            <Button Content="Zrušiť" Click="BtnCancel_Click" IsCancel="True" Padding="12,8"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

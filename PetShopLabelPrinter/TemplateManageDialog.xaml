@@ -1,0 +1,40 @@
+<Window x:Class="PetShopLabelPrinter.TemplateManageDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Spravovať šablóny štítkov" Height="480" Width="460" WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <ListBox x:Name="TemplateList" Grid.Row="0" Margin="0,0,0,12" DisplayMemberPath="Name" SelectionChanged="TemplateList_SelectionChanged"/>
+
+        <GroupBox Header="Kalibrácia tlače" Grid.Row="1" Padding="8" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Použite pri nesediacich okrajoch / mierke." Foreground="Gray" Margin="0,0,0,8"/>
+                <WrapPanel>
+                    <TextBlock Text="Offset X:" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="TxtCalOffsetX" Margin="6,0,12,0" Text="-"/>
+                    <TextBlock Text="Offset Y:" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="TxtCalOffsetY" Margin="6,0,12,0" Text="-"/>
+                </WrapPanel>
+                <WrapPanel Margin="0,4,0,0">
+                    <TextBlock Text="Scale X:" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="TxtCalScaleX" Margin="6,0,12,0" Text="-"/>
+                    <TextBlock Text="Scale Y:" FontWeight="SemiBold"/>
+                    <TextBlock x:Name="TxtCalScaleY" Margin="6,0,12,0" Text="-"/>
+                </WrapPanel>
+                <TextBlock Margin="0,8,0,0" Foreground="Gray" Text="Hodnoty upravíte cez tlačidlo Upraviť."/>
+            </StackPanel>
+        </GroupBox>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button x:Name="BtnAdd" Content="Pridať" Click="BtnAdd_Click" Padding="12,6" Margin="0,0,8,0"/>
+            <Button x:Name="BtnEdit" Content="Upraviť" Click="BtnEdit_Click" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/>
+            <Button x:Name="BtnDelete" Content="Zmazať" Click="BtnDelete_Click" Padding="12,6" Margin="0,0,8,0" IsEnabled="False"/>
+            <Button Content="Zavrieť" Click="BtnClose_Click" IsCancel="True" Padding="12,6"/>
+        </StackPanel>
+    </Grid>
+</Window>

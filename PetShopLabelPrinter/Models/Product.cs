@@ -16,6 +16,22 @@ namespace PetShopLabelPrinter.Models
         public string Notes { get; set; } = "";
         public int Quantity { get; set; } = 1;
         public bool IsActiveForPrint { get; set; } = false;
+        public int? TemplateId { get; set; }
+        public string TemplateName { get; set; } = "";
+
+        public string? Ean { get; set; }
+        public string? Sku { get; set; }
+        public string? ExpiryDate { get; set; }
+        public bool ShowEan { get; set; }
+        public bool ShowSku { get; set; }
+        public bool ShowExpiry { get; set; }
+
+        public bool BarcodeEnabled { get; set; }
+        public string? BarcodeValue { get; set; }
+        public string BarcodeFormat { get; set; } = "EAN13";
+        public bool BarcodeShowText { get; set; } = true;
+        public decimal? PackWeightValue { get; set; }
+        public string PackWeightUnit { get; set; } = "kg";
 
         /// <summary>
         /// Computed: LargePackPrice/LargePackWeightKg if available; else SmallPackPrice/SmallPackWeightKg; else null.
@@ -24,6 +40,13 @@ namespace PetShopLabelPrinter.Models
         {
             get
             {
+                if (PackWeightValue.HasValue && PackWeightValue.Value > 0 && SmallPackPrice.HasValue)
+                {
+                    var weightKg = PackWeightUnit == "g"
+                        ? PackWeightValue.Value / 1000m
+                        : PackWeightValue.Value;
+                    if (weightKg > 0) return SmallPackPrice.Value / weightKg;
+                }
                 if (LargePackWeightKg.HasValue && LargePackWeightKg.Value > 0 && LargePackPrice.HasValue)
                     return LargePackPrice.Value / LargePackWeightKg.Value;
                 if (SmallPackWeightKg.HasValue && SmallPackWeightKg.Value > 0 && SmallPackPrice.HasValue)

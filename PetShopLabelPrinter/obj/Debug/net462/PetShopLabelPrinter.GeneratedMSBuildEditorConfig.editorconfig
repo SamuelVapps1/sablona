@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = PetShopLabelPrinter
-build_property.ProjectDir = c:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\
+build_property.ProjectDir = C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

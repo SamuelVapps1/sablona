@@ -60,5 +60,7 @@ namespace PetShopLabelPrinter.Models
         // Calibration
         public double OffsetXMm { get; set; } = 0;
         public double OffsetYMm { get; set; } = 0;
+        public double CalibrationScaleX { get; set; } = 1.0;
+        public double CalibrationScaleY { get; set; } = 1.0;
     }
 }
