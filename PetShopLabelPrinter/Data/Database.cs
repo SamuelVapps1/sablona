@@ -62,6 +62,8 @@ namespace PetShopLabelPrinter.Data
             try { Execute(conn, "ALTER TABLE Products ADD COLUMN TemplateId INTEGER"); } catch { }
             try { Execute(conn, "ALTER TABLE Products ADD COLUMN PackWeightValue REAL"); } catch { }
             try { Execute(conn, "ALTER TABLE Products ADD COLUMN PackWeightUnit TEXT"); } catch { }
+            try { Execute(conn, "ALTER TABLE Products ADD COLUMN LargePackWeightValue REAL"); } catch { }
+            try { Execute(conn, "ALTER TABLE Products ADD COLUMN LargePackWeightUnit TEXT"); } catch { }
 
             Execute(conn, @"
                 CREATE TABLE IF NOT EXISTS PrintHistory (
@@ -200,9 +202,9 @@ namespace PetShopLabelPrinter.Data
                     INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice,
                         LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, UnitPriceText, Notes,
                         Ean, Sku, ExpiryDate, ShowEan, ShowSku, ShowExpiry, BarcodeEnabled, BarcodeValue, BarcodeFormat, BarcodeShowText,
-                        TemplateId, PackWeightValue, PackWeightUnit)
+                        TemplateId, PackWeightValue, PackWeightUnit, LargePackWeightValue, LargePackWeightUnit)
                     VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, @upo, @upt, @notes,
-                        @ean, @sku, @exp, @se, @ss, @sx, @be, @bv, @bf, @bst, @tid, @pwv, @pwu)";
+                        @ean, @sku, @exp, @se, @ss, @sx, @be, @bv, @bf, @bst, @tid, @pwv, @pwu, @lpwv, @lpwu)";
                 AddProductParams(cmd, p);
                 cmd.ExecuteNonQuery();
             }
@@ -224,7 +226,7 @@ namespace PetShopLabelPrinter.Data
                     UnitPriceOverride=@upo, UnitPriceText=@upt, Notes=@notes,
                     Ean=@ean, Sku=@sku, ExpiryDate=@exp, ShowEan=@se, ShowSku=@ss, ShowExpiry=@sx,
                     BarcodeEnabled=@be, BarcodeValue=@bv, BarcodeFormat=@bf, BarcodeShowText=@bst,
-                    TemplateId=@tid, PackWeightValue=@pwv, PackWeightUnit=@pwu
+                    TemplateId=@tid, PackWeightValue=@pwv, PackWeightUnit=@pwu, LargePackWeightValue=@lpwv, LargePackWeightUnit=@lpwu
                 WHERE Id=@id";
             cmd.Parameters.AddWithValue("@id", p.Id);
             AddProductParams(cmd, p);
@@ -324,6 +326,8 @@ namespace PetShopLabelPrinter.Data
             cmd.Parameters.AddWithValue("@tid", p.TemplateId.HasValue ? (object)p.TemplateId.Value : DBNull.Value);
             cmd.Parameters.AddWithValue("@pwv", p.PackWeightValue.HasValue ? (object)p.PackWeightValue.Value : DBNull.Value);
             cmd.Parameters.AddWithValue("@pwu", string.IsNullOrWhiteSpace(p.PackWeightUnit) ? "kg" : p.PackWeightUnit);
+            cmd.Parameters.AddWithValue("@lpwv", p.LargePackWeightValue.HasValue ? (object)p.LargePackWeightValue.Value : DBNull.Value);
+            cmd.Parameters.AddWithValue("@lpwu", string.IsNullOrWhiteSpace(p.LargePackWeightUnit) ? "kg" : p.LargePackWeightUnit);
         }
 
         private Product ReadProduct(IDataReader r)
@@ -358,12 +362,25 @@ namespace PetShopLabelPrinter.Data
                 BarcodeShowText = !idx.ContainsKey("BarcodeShowText") || GetInt(r, idx, "BarcodeShowText") != 0,
                 TemplateId = idx.ContainsKey("TemplateId") ? GetIntNull(r, idx, "TemplateId") : null,
                 PackWeightValue = idx.ContainsKey("PackWeightValue") ? GetDecimalNull(r, idx, "PackWeightValue") : null,
-                PackWeightUnit = idx.ContainsKey("PackWeightUnit") ? (GetString(r, idx, "PackWeightUnit") ?? "kg") : "kg"
+                PackWeightUnit = idx.ContainsKey("PackWeightUnit") ? (GetString(r, idx, "PackWeightUnit") ?? "kg") : "kg",
+                LargePackWeightValue = idx.ContainsKey("LargePackWeightValue") ? GetDecimalNull(r, idx, "LargePackWeightValue") : null,
+                LargePackWeightUnit = idx.ContainsKey("LargePackWeightUnit") ? (GetString(r, idx, "LargePackWeightUnit") ?? "kg") : "kg"
             };
             if (!p.PackWeightValue.HasValue && p.SmallPackWeightKg.HasValue)
             {
                 p.PackWeightValue = p.SmallPackWeightKg.Value;
                 p.PackWeightUnit = "kg";
+            }
+            if (!p.LargePackWeightValue.HasValue && p.LargePackWeightKg.HasValue)
+            {
+                p.LargePackWeightValue = p.LargePackWeightKg.Value;
+                p.LargePackWeightUnit = "kg";
+            }
+            if (p.LargePackWeightValue.HasValue && !p.LargePackWeightKg.HasValue)
+            {
+                p.LargePackWeightKg = string.Equals(p.LargePackWeightUnit, "g", StringComparison.OrdinalIgnoreCase)
+                    ? p.LargePackWeightValue.Value / 1000m
+                    : p.LargePackWeightValue.Value;
             }
             return p;
         }

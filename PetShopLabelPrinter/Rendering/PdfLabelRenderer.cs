@@ -61,12 +61,8 @@ namespace PetShopLabelPrinter.Rendering
         {
             var labelWidthMm = _settings.LabelWidthMm > 0 ? _settings.LabelWidthMm : LabelRenderer.LabelWidthMm;
             var labelHeightMm = _settings.LabelHeightMm > 0 ? _settings.LabelHeightMm : LabelRenderer.LabelHeightMm;
-            var isNarrow = labelWidthMm < 90;
-            var rightWidthMm = _settings.RightColumnWidthMm > 0 ? _settings.RightColumnWidthMm : _settings.RightColWidthMm;
-            if (isNarrow)
-                rightWidthMm = Math.Max(20, Math.Min(26, labelWidthMm * 0.32));
-            rightWidthMm = Math.Max(10, Math.Min(labelWidthMm - 10, rightWidthMm));
-            var leftWidthMm = labelWidthMm - rightWidthMm;
+            var isWide = labelWidthMm >= RetailLayoutConfig.WideThresholdMm;
+            var isNarrow = labelWidthMm < RetailLayoutConfig.NarrowThresholdMm;
             var borderMm = _settings.BorderThicknessMm > 0 ? _settings.BorderThicknessMm : _settings.LineThicknessMm;
 
             var ox = offsetXMm;
@@ -94,45 +90,161 @@ namespace PetShopLabelPrinter.Rendering
             var half = borderPt / 2.0;
             gfx.DrawRectangle(pen, MmToPt(ox) + half, MmToPt(oy) + half, Math.Max(0, MmToPt(w) - borderPt), Math.Max(0, MmToPt(h) - borderPt));
 
-            var pad = _settings.PaddingMm;
-            var leftW = leftWidthMm;
-            var rightW = rightWidthMm;
+            if (isWide)
+                RenderRetailWide(gfx, product, ox, oy, w, h, labelWidthMm, labelHeightMm);
+            else
+                RenderRetailNarrow(gfx, product, ox, oy, w, h, labelWidthMm, labelHeightMm, isNarrow);
 
-            var hasBarcode = product.BarcodeEnabled && !string.IsNullOrWhiteSpace(product.BarcodeValue)
-                && BarcodeRenderer.ValidateBarcodeValue(product.BarcodeValue, product.BarcodeFormat).IsValid;
+            gfx.Restore(state);
+        }
+
+        private void RenderRetailWide(XGraphics gfx, Product product, double ox, double oy, double w, double h, double labelWidthMm, double labelHeightMm)
+        {
+            var pad = _settings.PaddingMm;
+            var gapMm = RetailLayoutConfig.Clamp(labelWidthMm * RetailLayoutConfig.GapRatio, RetailLayoutConfig.GapMinMm, RetailLayoutConfig.GapMaxMm);
+            var contentX = ox + pad;
+            var contentY = oy + pad;
+            var contentW = Math.Max(0, w - pad * 2);
+            var contentH = Math.Max(0, h - pad * 2);
+
+            var leftRatio = RetailLayoutConfig.Clamp(RetailLayoutConfig.WideLeftRatio, RetailLayoutConfig.WideLeftMinRatio, RetailLayoutConfig.WideLeftMaxRatio);
+            var leftW = contentW * leftRatio;
+            var rightW = Math.Max(0, contentW - leftW - gapMm);
+            var leftX = contentX;
+            var rightX = leftX + leftW + gapMm;
+
             var hasMeta = (product.ShowEan && !string.IsNullOrWhiteSpace(product.Ean))
                 || (product.ShowSku && !string.IsNullOrWhiteSpace(product.Sku))
                 || (product.ShowExpiry && !string.IsNullOrWhiteSpace(product.ExpiryDate));
+            var hasBarcode = product.BarcodeEnabled && !string.IsNullOrWhiteSpace(product.BarcodeValue)
+                && BarcodeRenderer.ValidateBarcodeValue(product.BarcodeValue, product.BarcodeFormat).IsValid;
 
-            var layout = LabelBottomLayout.ComputeLayout(labelWidthMm, labelHeightMm, pad, hasBarcode, hasMeta);
-            var bottomReserveMm = layout.BarcodeAreaHeightMm + layout.MetaAreaHeightMm;
-            var mainH = layout.MainContentHeightMm;
+            var metaHmm = hasMeta ? 3.2 : 0;
+            DrawTwoLineTitle(gfx, product.ProductName ?? "", leftX, contentY, leftW, Math.Max(0, contentH - metaHmm - 4.2), _settings.ProductNameFontFamily, 15, 10, true);
+            DrawSingleLinePdf(gfx, product.VariantText ?? "", leftX, contentY + (contentH * 0.58), leftW, 4.2, _settings.VariantTextFontFamily, 8.5, false);
+            if (!string.IsNullOrWhiteSpace(product.Notes))
+                DrawSingleLinePdf(gfx, product.Notes ?? "", leftX, contentY + (contentH * 0.70), leftW, 3.6, "Arial", 6.4, false);
+            if (hasMeta)
+                DrawMetaRow(gfx, product, leftX, contentY + contentH - metaHmm, leftW);
 
-            DrawLeftColumn(gfx, product, ox + pad, oy + pad, leftW - pad * 2, mainH, isNarrow);
+            var line1H = contentH * 0.22;
+            var line2H = contentH * 0.24;
+            var l1Y = contentY;
+            var l2Y = l1Y + line1H;
+            var sepPen = new XPen(XColors.Black, MmToPt(0.12));
+            gfx.DrawLine(sepPen, MmToPt(rightX), MmToPt(l1Y + line1H), MmToPt(rightX + rightW), MmToPt(l1Y + line1H));
 
-            var rightX = ox + leftW;
-            DrawRightColumn(gfx, product, rightX, oy, rightW - pad, h - bottomReserveMm);
+            DrawSingleLinePdf(gfx, product.SmallPackLabel ?? "", rightX, l1Y, rightW * 0.58, line1H, "Arial", 7.2, false);
+            DrawSingleLinePdf(gfx, Formatting.FormatPrice(product.SmallPackPrice), rightX + rightW * 0.58, l1Y, rightW * 0.42, line1H, _settings.PriceBigFontFamily, 9.2, true);
+            DrawSingleLinePdf(gfx, product.LargePackLabel ?? "", rightX, l2Y, rightW * 0.56, line2H, "Arial", 8.0, false);
+            DrawSingleLinePdf(gfx, Formatting.FormatPrice(product.LargePackPrice), rightX + rightW * 0.56, l2Y, rightW * 0.44, line2H, _settings.PriceBigFontFamily, 11.2, true);
 
-            var bottomY = oy + h - pad - bottomReserveMm;
-            if (layout.ShowBarcode)
+            var bcHmm = hasBarcode
+                ? RetailLayoutConfig.Clamp(labelHeightMm * RetailLayoutConfig.WideBarcodeHeightRatio, RetailLayoutConfig.WideBarcodeHeightMinMm, RetailLayoutConfig.WideBarcodeHeightMaxMm)
+                : 0;
+            var bcWmm = hasBarcode
+                ? RetailLayoutConfig.Clamp(rightW * RetailLayoutConfig.WideBarcodeWidthRatio, RetailLayoutConfig.WideBarcodeWidthMinMm, RetailLayoutConfig.WideBarcodeWidthMaxMm)
+                : 0;
+            var bcTextHmm = hasBarcode && product.BarcodeShowText ? 2.8 : 0;
+            var bcY = contentY + contentH - bcHmm - bcTextHmm - 0.8;
+            var bcX = Math.Max(rightX + RetailLayoutConfig.QuietZoneMm, rightX + rightW - bcWmm - 1.0);
+            var bcW = Math.Min(bcWmm, rightW - RetailLayoutConfig.QuietZoneMm * 2);
+            var unitText = string.IsNullOrWhiteSpace(product.UnitPriceText)
+                ? Formatting.FormatUnitPrice(product.UnitPricePerKg)
+                : product.UnitPriceText;
+            DrawSingleLinePdf(gfx, unitText, rightX, bcY - 4.2, rightW, 4.2, "Arial", 7.0, true);
+            if (hasBarcode)
+                DrawRetailBarcodePdf(gfx, product, bcX, bcY, bcW, bcHmm, product.BarcodeShowText);
+        }
+
+        private void RenderRetailNarrow(XGraphics gfx, Product product, double ox, double oy, double w, double h, double labelWidthMm, double labelHeightMm, bool isNarrow)
+        {
+            var pad = _settings.PaddingMm;
+            var gapMm = RetailLayoutConfig.Clamp(labelWidthMm * RetailLayoutConfig.GapRatio, RetailLayoutConfig.GapMinMm, RetailLayoutConfig.GapMaxMm);
+            var contentX = ox + pad;
+            var contentY = oy + pad;
+            var contentW = Math.Max(0, w - pad * 2);
+            var contentH = Math.Max(0, h - pad * 2);
+
+            var leftW = contentW * RetailLayoutConfig.NarrowLeftRatio;
+            var rightW = Math.Max(0, contentW - leftW - gapMm);
+            var leftX = contentX;
+            var rightX = leftX + leftW + gapMm;
+
+            var hasMeta = (product.ShowEan && !string.IsNullOrWhiteSpace(product.Ean))
+                || (product.ShowSku && !string.IsNullOrWhiteSpace(product.Sku))
+                || (product.ShowExpiry && !string.IsNullOrWhiteSpace(product.ExpiryDate));
+            var hasBarcode = product.BarcodeEnabled && !string.IsNullOrWhiteSpace(product.BarcodeValue)
+                && BarcodeRenderer.ValidateBarcodeValue(product.BarcodeValue, product.BarcodeFormat).IsValid;
+
+            var metaHmm = hasMeta ? 2.8 : 0;
+            DrawTwoLineTitle(gfx, product.ProductName ?? "", leftX, contentY, leftW, Math.Max(0, contentH - metaHmm - 3.8), _settings.ProductNameFontFamily, 12, 9, true);
+            DrawSingleLinePdf(gfx, product.VariantText ?? "", leftX, contentY + (contentH * 0.60), leftW, 3.8, _settings.VariantTextFontFamily, 7.2, false);
+            if (hasMeta)
+                DrawMetaRow(gfx, product, leftX, contentY + contentH - metaHmm, leftW);
+
+            DrawSingleLinePdf(gfx, Formatting.FormatPrice(product.SmallPackPrice), rightX, contentY, rightW, 5.0, _settings.PriceBigFontFamily, 9.2, true);
+            DrawSingleLinePdf(gfx, Formatting.FormatPrice(product.LargePackPrice), rightX, contentY + 4.8, rightW, 5.0, _settings.PriceBigFontFamily, 10.0, true);
+
+            if (hasBarcode)
             {
-                var qz = layout.QuietZoneMm;
-                var contentW = w - pad * 2 - qz * 2;
-                var bcWmm = isNarrow
-                    ? Clamp((labelWidthMm - _settings.PaddingMm * 2 - qz * 2) * 0.65, 38, 55)
-                    : (labelWidthMm - _settings.PaddingMm * 2 - qz * 2);
-                var bcW = Math.Min(contentW, bcWmm);
-                var bcX = ox + pad + qz + Math.Max(0, (contentW - bcW) / 2.0);
-                var bcH = layout.BarcodeHeightMm;
-                BarcodeRenderer.DrawToPdf(gfx, product.BarcodeValue!, product.BarcodeFormat ?? "EAN13",
-                    bcX, bottomY, bcW, bcH, product.BarcodeShowText);
-                bottomY += layout.BarcodeAreaHeightMm;
+                var bcWmm = RetailLayoutConfig.Clamp(contentW * RetailLayoutConfig.NarrowBarcodeWidthRatio, RetailLayoutConfig.NarrowBarcodeWidthMinMm, RetailLayoutConfig.NarrowBarcodeWidthMaxMm);
+                var bcHmm = RetailLayoutConfig.Clamp(labelHeightMm * RetailLayoutConfig.NarrowBarcodeHeightRatio, RetailLayoutConfig.NarrowBarcodeHeightMinMm, RetailLayoutConfig.NarrowBarcodeHeightMaxMm);
+                var bcTextHmm = product.BarcodeShowText ? 2.6 : 0;
+                var bcX = rightW >= bcWmm + 2 ? (rightX + rightW - bcWmm - 1) : (contentX + (contentW - bcWmm) / 2.0);
+                var bcY = contentY + contentH - bcHmm - bcTextHmm - 0.6;
+                DrawRetailBarcodePdf(gfx, product, bcX, bcY, bcWmm, bcHmm, product.BarcodeShowText);
             }
-            if (layout.ShowMeta)
+        }
+
+        private void DrawRetailBarcodePdf(XGraphics gfx, Product product, double xMm, double yMm, double wMm, double hMm, bool showText)
+        {
+            BarcodeRenderer.DrawToPdf(gfx, product.BarcodeValue!, product.BarcodeFormat ?? "EAN13", xMm, yMm, wMm, hMm, false);
+            if (!showText) return;
+            var text = BarcodeRenderer.NormalizeBarcodeValue(product.BarcodeValue, product.BarcodeFormat);
+            var font = new XFont("Arial", RetailLayoutConfig.BarcodeTextPt, XFontStyleEx.Regular);
+            gfx.DrawString(text ?? "", font, XBrushes.Black, new XRect(MmToPt(xMm), MmToPt(yMm + hMm + 0.2), MmToPt(wMm), MmToPt(2.8)), XStringFormats.TopCenter);
+        }
+
+        private void DrawSingleLinePdf(XGraphics gfx, string text, double xMm, double yMm, double wMm, double hMm, string family, double pt, bool rightAlign)
+        {
+            var font = new XFont(family, pt, XFontStyleEx.Regular);
+            var format = rightAlign ? XStringFormats.TopRight : XStringFormats.TopLeft;
+            gfx.DrawString(text ?? "", font, XBrushes.Black, new XRect(MmToPt(xMm), MmToPt(yMm), MmToPt(wMm), MmToPt(hMm)), format);
+        }
+
+        private void DrawTwoLineTitle(XGraphics gfx, string text, double xMm, double yMm, double wMm, double hMm, string family, double maxPt, double minPt, bool bold)
+        {
+            var style = bold ? XFontStyleEx.Bold : XFontStyleEx.Regular;
+            var maxWidthPt = MmToPt(wMm);
+            var maxHeightPt = MmToPt(hMm);
+            var linesToDraw = new List<string>();
+            XFont best = new XFont(family, minPt, style);
+            for (var pt = maxPt; pt >= minPt; pt -= 1)
             {
-                DrawMetaRow(gfx, product, ox + pad, bottomY, w - pad * 2);
+                var font = new XFont(family, pt, style);
+                var lines = WrapTextToLines(gfx, text ?? "", font, maxWidthPt);
+                if (lines.Count > 2)
+                    lines = new List<string> { lines[0], lines[1] + "..." };
+                var lineHeight = gfx.MeasureString("X", font, XStringFormats.TopLeft).Height;
+                if (lines.Count * lineHeight <= maxHeightPt + 0.5)
+                {
+                    best = font;
+                    linesToDraw = lines;
+                    break;
+                }
+                linesToDraw = lines;
+                best = font;
             }
-            gfx.Restore(state);
+
+            if (linesToDraw.Count == 0) linesToDraw.Add(text ?? "");
+            var yPt = MmToPt(yMm);
+            var xPt = MmToPt(xMm);
+            var linePt = gfx.MeasureString("X", best, XStringFormats.TopLeft).Height;
+            for (var i = 0; i < Math.Min(2, linesToDraw.Count); i++)
+            {
+                gfx.DrawString(linesToDraw[i], best, XBrushes.Black, new XRect(xPt, yPt + i * linePt, maxWidthPt, linePt), XStringFormats.TopLeft);
+            }
         }
 
         private void DrawMetaRow(XGraphics gfx, Product product, double x, double y, double w)

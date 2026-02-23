@@ -23,7 +23,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="80"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Hmotnosť (kg):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="Hmotnosť:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBox x:Name="TxtSmallPackWeight" Grid.Column="1" Margin="0,0,16,0" Padding="6,4"/>
                 <TextBlock Text="Cena:" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBox x:Name="TxtSmallPackPrice" Grid.Column="3" Padding="6,4"/>
@@ -43,12 +43,18 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="80"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="80"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="Hmotnosť (kg):" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBlock Text="Hmotnosť:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <TextBox x:Name="TxtLargePackWeight" Grid.Column="1" Margin="0,0,16,0" Padding="6,4"/>
-                <TextBlock Text="Cena:" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox x:Name="TxtLargePackPrice" Grid.Column="3" Padding="6,4"/>
+                <ComboBox x:Name="CmbLargePackUnit" Grid.Column="2" Width="64" Margin="0,0,16,0" SelectedIndex="0">
+                    <ComboBoxItem Content="kg"/>
+                    <ComboBoxItem Content="g"/>
+                </ComboBox>
+                <TextBlock Text="Cena:" Grid.Column="3" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <TextBox x:Name="TxtLargePackPrice" Grid.Column="4" Padding="6,4"/>
             </Grid>
 
             <TextBlock Text="Cena za kg - prepísať (voliteľné, prázdne = vypočítané)" Margin="0,0,0,4"/>

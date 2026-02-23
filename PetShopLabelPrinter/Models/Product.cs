@@ -10,6 +10,8 @@ namespace PetShopLabelPrinter.Models
         public decimal? SmallPackPrice { get; set; }
         public string LargePackLabel { get; set; } = "";
         public decimal? LargePackWeightKg { get; set; }
+        public decimal? LargePackWeightValue { get; set; }
+        public string LargePackWeightUnit { get; set; } = "kg";
         public decimal? LargePackPrice { get; set; }
         public decimal? UnitPriceOverride { get; set; }
         public string UnitPriceText { get; set; } = "";
@@ -46,6 +48,13 @@ namespace PetShopLabelPrinter.Models
                         ? PackWeightValue.Value / 1000m
                         : PackWeightValue.Value;
                     if (weightKg > 0) return SmallPackPrice.Value / weightKg;
+                }
+                if (LargePackWeightValue.HasValue && LargePackWeightValue.Value > 0 && LargePackPrice.HasValue)
+                {
+                    var largeWeightKg = LargePackWeightUnit == "g"
+                        ? LargePackWeightValue.Value / 1000m
+                        : LargePackWeightValue.Value;
+                    if (largeWeightKg > 0) return LargePackPrice.Value / largeWeightKg;
                 }
                 if (LargePackWeightKg.HasValue && LargePackWeightKg.Value > 0 && LargePackPrice.HasValue)
                     return LargePackPrice.Value / LargePackWeightKg.Value;

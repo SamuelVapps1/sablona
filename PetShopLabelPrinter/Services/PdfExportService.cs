@@ -72,7 +72,8 @@ namespace PetShopLabelPrinter.Services
             {
                 if (q?.Product == null) continue;
                 var copies = q.Quantity < 1 ? 1 : q.Quantity;
-                var tpl = (q.TemplateId.HasValue && templates.TryGetValue(q.TemplateId.Value, out var found))
+                var resolvedTemplateId = q.Product.TemplateId ?? q.TemplateId;
+                var tpl = (resolvedTemplateId.HasValue && templates.TryGetValue(resolvedTemplateId.Value, out var found))
                     ? found
                     : fallbackTemplate;
                 jobs.Add(new LabelPrintJob

@@ -152,3 +152,5 @@ C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Release\net462\CsvExportD
 C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Release\net462\CsvImportWizardDialog.g.cs
 C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Release\net462\TemplateEditDialog.g.cs
 C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Release\net462\TemplateManageDialog.g.cs
+C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Release\net462\TemplateSelectDialog.baml
+C:\Users\Admin\Desktop\sablona\PetShopLabelPrinter\obj\Release\net462\TemplateSelectDialog.g.cs

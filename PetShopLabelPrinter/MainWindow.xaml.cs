@@ -256,6 +256,12 @@ namespace PetShopLabelPrinter
             p.SmallPackWeightKg = p.PackWeightValue.HasValue
                 ? (p.PackWeightUnit == "g" ? p.PackWeightValue.Value / 1000m : p.PackWeightValue.Value)
                 : p.SmallPackWeightKg;
+            p.LargePackWeightUnit = string.Equals(p.LargePackWeightUnit, "g", StringComparison.OrdinalIgnoreCase) ? "g" : "kg";
+            if (!p.LargePackWeightValue.HasValue && p.LargePackWeightKg.HasValue)
+                p.LargePackWeightValue = p.LargePackWeightKg.Value;
+            p.LargePackWeightKg = p.LargePackWeightValue.HasValue
+                ? (p.LargePackWeightUnit == "g" ? p.LargePackWeightValue.Value / 1000m : p.LargePackWeightValue.Value)
+                : p.LargePackWeightKg;
             p.Ean = p.ShowEan && !string.IsNullOrWhiteSpace(p.Ean)
                 ? new string(p.Ean.Where(c => char.IsDigit(c)).ToArray()) : (string.IsNullOrWhiteSpace(p.Ean) ? null : p.Ean.Trim());
             p.Sku = string.IsNullOrWhiteSpace(p.Sku) ? null : p.Sku.Trim();
@@ -359,9 +365,15 @@ namespace PetShopLabelPrinter
             var dlg = new SaveFileDialog
             {
                 Filter = "PDF|*.pdf",
-                FileName = $"Labels_{DateTime.Now:yyyyMMdd_HHmmss}.pdf"
+                FileName = $"Labels_{DateTime.Now:yyyyMMdd_HHmmss}.pdf",
+                DefaultExt = ".pdf",
+                AddExtension = true,
+                InitialDirectory = ResolveExportInitialDirectory()
             };
             if (dlg.ShowDialog() != true) return;
+            var selectedDir = System.IO.Path.GetDirectoryName(dlg.FileName);
+            if (!string.IsNullOrWhiteSpace(selectedDir))
+                _db.SetSetting("LastExportFolder", selectedDir);
 
             string path;
             try
@@ -644,6 +656,11 @@ namespace PetShopLabelPrinter
                 MessageBox.Show("Vyberte tlačiareň.", "Admin", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
+            if (_printService.IsVirtualPrinter(name))
+            {
+                MessageBox.Show("Vyberte reálnu tlačiareň (nie PDF/XPS/OneNote/Fax).", "Admin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
             _printService.SetDefaultPrinter(name);
             MessageBox.Show($"Predvolená tlačiareň: {name}", "Admin", MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -661,13 +678,21 @@ namespace PetShopLabelPrinter
         private void BtnPrintTest_Click(object sender, RoutedEventArgs e)
         {
             var printer = _printService.GetDefaultPrinter();
-            if (string.IsNullOrWhiteSpace(printer))
+            if (string.IsNullOrWhiteSpace(printer) || _printService.IsVirtualPrinter(printer))
             {
-                MessageBox.Show("Najprv uložte predvolenú tlačiareň v Admin režime.", "Tlač testu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("Najprv uložte reálnu predvolenú tlačiareň v Admin režime.", "Tlač testu", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (!_calibService.PrintTestPdf(printer!))
                 MessageBox.Show("Nepodarilo sa odoslať test na tlačiareň.", "Tlač testu", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private string ResolveExportInitialDirectory()
+        {
+            var last = _db.GetSetting("LastExportFolder");
+            if (!string.IsNullOrWhiteSpace(last) && System.IO.Directory.Exists(last))
+                return last;
+            return Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         }
 
         private void BtnCalibrationTestPrint_Click(object sender, RoutedEventArgs e)

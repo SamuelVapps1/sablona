@@ -56,7 +56,7 @@ namespace PetShopLabelPrinter.Rendering
             return new string(trimmed.Where(char.IsDigit).ToArray());
         }
 
-        public static bool TryEncode(string value, string format, int widthPx, int heightPx, out byte[]? pngBytes, int marginPx = 0)
+        public static bool TryEncode(string value, string format, int widthPx, int heightPx, out byte[]? pngBytes, int marginPx = 0, bool pureBarcode = true)
         {
             pngBytes = null;
             if (string.IsNullOrWhiteSpace(value)) return false;
@@ -74,7 +74,7 @@ namespace PetShopLabelPrinter.Rendering
                         Width = widthPx,
                         Height = heightPx,
                         Margin = Math.Max(0, marginPx),
-                        PureBarcode = false
+                        PureBarcode = pureBarcode
                     }
                 };
                 var bmp = writer.Write(normalized);
@@ -96,7 +96,7 @@ namespace PetShopLabelPrinter.Rendering
             {
                 var w = (int)Math.Max(1, rect.Width);
                 var h = (int)Math.Max(1, rect.Height);
-                if (!TryEncode(value, format, w, h, out var pngBytes, 0) || pngBytes == null) return;
+                if (!TryEncode(value, format, w, h, out var pngBytes, 0, true) || pngBytes == null) return;
                 using var ms = new MemoryStream(pngBytes);
                 var decoder = BitmapDecoder.Create(ms, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
                 var frame = decoder.Frames[0];
@@ -112,7 +112,7 @@ namespace PetShopLabelPrinter.Rendering
             {
                 var wPx = Math.Max(80, (int)Math.Round(wMm * 12.0));
                 var hPx = Math.Max(26, (int)Math.Round(hMm * 12.0));
-                if (!TryEncode(value, format, wPx, hPx, out var pngBytes, 0) || pngBytes == null) return;
+                if (!TryEncode(value, format, wPx, hPx, out var pngBytes, 0, true) || pngBytes == null) return;
                 var ms = new MemoryStream(pngBytes);
                 var ximg = XImage.FromStream(ms);
                 gfx.DrawImage(ximg, XUnit.FromMillimeter(xMm), XUnit.FromMillimeter(yMm), XUnit.FromMillimeter(wMm), XUnit.FromMillimeter(hMm));

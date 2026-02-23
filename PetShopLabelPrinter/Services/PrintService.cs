@@ -23,12 +23,23 @@ namespace PetShopLabelPrinter.Services
 
         public string? GetDefaultPrinter()
         {
+            var preferred = _db.GetSetting("PreferredPrinterName");
+            if (!string.IsNullOrWhiteSpace(preferred))
+                return preferred;
             return _db.GetSetting("PrinterName");
         }
 
         public void SetDefaultPrinter(string? name)
         {
-            _db.SetSetting("PrinterName", name ?? "");
+            var value = name ?? "";
+            _db.SetSetting("PreferredPrinterName", value);
+            _db.SetSetting("PrinterName", value); // backward compatibility for existing reads
+        }
+
+        public bool IsVirtualPrinter(string? printerName)
+        {
+            if (string.IsNullOrWhiteSpace(printerName)) return true;
+            return IsVirtualPrinterName(printerName);
         }
 
         public List<string> GetInstalledPrinters()
@@ -54,27 +65,9 @@ namespace PetShopLabelPrinter.Services
 
             try
             {
-                var server = new LocalPrintServer();
-                var queues = server.GetPrintQueues();
-                var printerName = GetDefaultPrinter();
-                PrintQueue? pq = null;
-
-                if (!string.IsNullOrWhiteSpace(printerName))
-                {
-                    foreach (var q in queues)
-                    {
-                        if (q.Name == printerName) { pq = q; break; }
-                    }
-                }
-
                 var printDialog = new PrintDialog();
-                if (pq == null)
-                {
-                    if (printDialog.ShowDialog() != true || printDialog.PrintQueue == null)
-                        return false;
-                    pq = printDialog.PrintQueue;
-                    SetDefaultPrinter(pq.Name);
-                }
+                var pq = ResolveRealPrintQueue(printDialog);
+                if (pq == null) return false;
 
                 printDialog.PrintQueue = pq;
                 printDialog.PrintTicket = pq.DefaultPrintTicket;
@@ -117,7 +110,8 @@ namespace PetShopLabelPrinter.Services
             {
                 if (q?.Product == null) continue;
                 var copies = q.Quantity < 1 ? 1 : q.Quantity;
-                var tpl = (q.TemplateId.HasValue && templates.TryGetValue(q.TemplateId.Value, out var found))
+                var resolvedTemplateId = q.Product.TemplateId ?? q.TemplateId;
+                var tpl = (resolvedTemplateId.HasValue && templates.TryGetValue(resolvedTemplateId.Value, out var found))
                     ? found
                     : fallbackTemplate;
                 jobs.Add(new LabelPrintJob
@@ -136,27 +130,9 @@ namespace PetShopLabelPrinter.Services
         {
             try
             {
-                var server = new LocalPrintServer();
-                var queues = server.GetPrintQueues();
-                var printerName = GetDefaultPrinter();
-                PrintQueue? pq = null;
-
-                if (!string.IsNullOrWhiteSpace(printerName))
-                {
-                    foreach (var q in queues)
-                    {
-                        if (q.Name == printerName) { pq = q; break; }
-                    }
-                }
-
                 var printDialog = new PrintDialog();
-                if (pq == null)
-                {
-                    if (printDialog.ShowDialog() != true || printDialog.PrintQueue == null)
-                        return false;
-                    pq = printDialog.PrintQueue;
-                    SetDefaultPrinter(pq.Name);
-                }
+                var pq = ResolveRealPrintQueue(printDialog);
+                if (pq == null) return false;
 
                 printDialog.PrintQueue = pq;
                 printDialog.PrintTicket = pq.DefaultPrintTicket;
@@ -176,26 +152,9 @@ namespace PetShopLabelPrinter.Services
         {
             try
             {
-                var server = new LocalPrintServer();
-                var queues = server.GetPrintQueues();
-                var printerName = GetDefaultPrinter();
-                PrintQueue? pq = null;
-                if (!string.IsNullOrWhiteSpace(printerName))
-                {
-                    foreach (var q in queues)
-                    {
-                        if (q.Name == printerName) { pq = q; break; }
-                    }
-                }
-
                 var printDialog = new PrintDialog();
-                if (pq == null)
-                {
-                    if (printDialog.ShowDialog() != true || printDialog.PrintQueue == null)
-                        return false;
-                    pq = printDialog.PrintQueue;
-                    SetDefaultPrinter(pq.Name);
-                }
+                var pq = ResolveRealPrintQueue(printDialog);
+                if (pq == null) return false;
 
                 printDialog.PrintQueue = pq;
                 printDialog.PrintTicket = pq.DefaultPrintTicket;
@@ -209,6 +168,60 @@ namespace PetShopLabelPrinter.Services
             {
                 return false;
             }
+        }
+
+        private PrintQueue? ResolveRealPrintQueue(PrintDialog printDialog)
+        {
+            var server = new LocalPrintServer();
+            var queues = server.GetPrintQueues().ToList();
+            var realQueues = queues.Where(q => !q.IsOffline && !q.IsNotAvailable && !IsVirtualPrinterName(q.Name)).ToList();
+            if (realQueues.Count == 0)
+            {
+                MessageBox.Show("Nenájdená reálna tlačiareň. Pripojte tlačiareň alebo zvoľte inú.", "Tlač", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return null;
+            }
+
+            var preferred = GetDefaultPrinter();
+            var preferredQueue = TryGetQueue(queues, preferred);
+            if (preferredQueue != null && !IsVirtualPrinterName(preferredQueue.Name) && !preferredQueue.IsOffline && !preferredQueue.IsNotAvailable)
+                return preferredQueue;
+
+            var defaultQueue = TryGetQueue(queues, server.DefaultPrintQueue?.Name);
+            if (defaultQueue != null && !IsVirtualPrinterName(defaultQueue.Name) && !defaultQueue.IsOffline && !defaultQueue.IsNotAvailable)
+                return defaultQueue;
+
+            while (true)
+            {
+                if (printDialog.ShowDialog() != true || printDialog.PrintQueue == null)
+                    return null;
+                var selected = TryGetQueue(queues, printDialog.PrintQueue.Name) ?? printDialog.PrintQueue;
+                if (selected != null && !IsVirtualPrinterName(selected.Name))
+                {
+                    SetDefaultPrinter(selected.Name);
+                    return selected;
+                }
+                MessageBox.Show("Vyberte reálnu tlačiareň (nie PDF/XPS/OneNote/Fax).", "Tlač", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private static PrintQueue? TryGetQueue(IEnumerable<PrintQueue> queues, string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            foreach (var q in queues)
+            {
+                if (string.Equals(q.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return q;
+            }
+            return null;
+        }
+
+        private static bool IsVirtualPrinterName(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return true;
+            return name.IndexOf("PDF", StringComparison.OrdinalIgnoreCase) >= 0
+                   || name.IndexOf("XPS", StringComparison.OrdinalIgnoreCase) >= 0
+                   || name.IndexOf("OneNote", StringComparison.OrdinalIgnoreCase) >= 0
+                   || name.IndexOf("Fax", StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 

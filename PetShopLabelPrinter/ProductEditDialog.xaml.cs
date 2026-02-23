@@ -28,7 +28,7 @@ namespace PetShopLabelPrinter
                 TxtSmallPackWeight.Text = product.SmallPackWeightKg?.ToString(CultureInfo.InvariantCulture) ?? "";
                 TxtSmallPackPrice.Text = product.SmallPackPrice?.ToString(CultureInfo.InvariantCulture) ?? "";
                 TxtLargePackLabel.Text = product.LargePackLabel;
-                TxtLargePackWeight.Text = product.LargePackWeightKg?.ToString(CultureInfo.InvariantCulture) ?? "";
+                TxtLargePackWeight.Text = (product.LargePackWeightValue ?? product.LargePackWeightKg)?.ToString(CultureInfo.InvariantCulture) ?? "";
                 TxtLargePackPrice.Text = product.LargePackPrice?.ToString(CultureInfo.InvariantCulture) ?? "";
                 TxtUnitPriceOverride.Text = product.UnitPriceOverride?.ToString("N2", CultureInfo.GetCultureInfo("sk-SK")) ?? "";
                 TxtNotes.Text = product.Notes ?? "";
@@ -49,10 +49,13 @@ namespace PetShopLabelPrinter
                     TxtSmallPackWeight.Text = product.PackWeightValue.Value.ToString(CultureInfo.InvariantCulture);
                 var unit = string.Equals(product.PackWeightUnit, "g", System.StringComparison.OrdinalIgnoreCase) ? "g" : "kg";
                 CmbPackUnit.SelectedIndex = unit == "g" ? 1 : 0;
+                var largeUnit = string.Equals(product.LargePackWeightUnit, "g", System.StringComparison.OrdinalIgnoreCase) ? "g" : "kg";
+                CmbLargePackUnit.SelectedIndex = largeUnit == "g" ? 1 : 0;
             }
             else
             {
                 CmbPackUnit.SelectedIndex = 0;
+                CmbLargePackUnit.SelectedIndex = 0;
             }
         }
 
@@ -76,8 +79,15 @@ namespace PetShopLabelPrinter
             if (string.IsNullOrWhiteSpace(Product.SmallPackLabel) && Product.PackWeightValue.HasValue)
                 Product.SmallPackLabel = "Balenie " + FormatPackWeight(Product.PackWeightValue.Value, Product.PackWeightUnit);
             Product.LargePackLabel = TxtLargePackLabel.Text?.Trim() ?? "";
-            Product.LargePackWeightKg = decimal.TryParse(TxtLargePackWeight.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var lw) ? lw : null;
+            var largeUnit = (CmbLargePackUnit.SelectedItem as ComboBoxItem)?.Content as string ?? "kg";
+            Product.LargePackWeightUnit = largeUnit == "g" ? "g" : "kg";
+            Product.LargePackWeightValue = decimal.TryParse(TxtLargePackWeight.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var lw) ? lw : null;
+            Product.LargePackWeightKg = Product.LargePackWeightValue.HasValue
+                ? (Product.LargePackWeightUnit == "g" ? Product.LargePackWeightValue.Value / 1000m : Product.LargePackWeightValue.Value)
+                : null;
             Product.LargePackPrice = decimal.TryParse(TxtLargePackPrice.Text, NumberStyles.Any, CultureInfo.InvariantCulture, out var lp) ? lp : null;
+            if (string.IsNullOrWhiteSpace(Product.LargePackLabel) && Product.LargePackWeightValue.HasValue)
+                Product.LargePackLabel = "Balenie " + FormatPackWeight(Product.LargePackWeightValue.Value, Product.LargePackWeightUnit);
             decimal upo;
             Product.UnitPriceOverride = string.IsNullOrWhiteSpace(TxtUnitPriceOverride.Text) ? null
                 : (decimal.TryParse(TxtUnitPriceOverride.Text, NumberStyles.Any, CultureInfo.GetCultureInfo("sk-SK"), out upo)
