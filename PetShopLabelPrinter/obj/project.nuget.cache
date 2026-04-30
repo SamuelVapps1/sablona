@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "xhYHshB5ZJ0=",
+  "dgSpecHash": "Jn/qxpHLS3E=",
   "success": true,
-  "projectFilePath": "C:\\Users\\Admin\\Desktop\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj",
+  "projectFilePath": "c:\\Users\\Admin\\Desktop\\Projekty\\sablona\\PetShopLabelPrinter\\PetShopLabelPrinter.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.bcl.asyncinterfaces\\8.0.0\\microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
     "C:\\Users\\Admin\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",

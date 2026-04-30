@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,13 +22,13 @@ namespace PetShopLabelPrinter
         private readonly PdfExportService _pdfService;
         private readonly PrintService _printService;
         private readonly CalibrationTestService _calibService;
+        private readonly AdminPinService _pinService;
 
         private readonly ObservableCollection<Product> _products = new ObservableCollection<Product>();
         private readonly ObservableCollection<PrintHistoryItem> _history = new ObservableCollection<PrintHistoryItem>();
         private readonly ICollectionView _productView;
 
         private bool _isAdminMode;
-        private const string AdminPin = "1234";
 
         public MainWindow()
         {
@@ -39,6 +38,7 @@ namespace PetShopLabelPrinter
             _pdfService = new PdfExportService(_db);
             _printService = new PrintService(_db);
             _calibService = new CalibrationTestService(_db);
+            _pinService = new AdminPinService(_db);
 
             ProductGrid.ItemsSource = _products;
             HistoryList.ItemsSource = _history;
@@ -445,18 +445,10 @@ namespace PetShopLabelPrinter
         {
             if (HistoryList.SelectedItem is not PrintHistoryItem h || string.IsNullOrWhiteSpace(h.PdfPath))
                 return;
-            if (!System.IO.File.Exists(h.PdfPath))
+            if (!SafeDocumentLauncher.TryOpenPdf(h.PdfPath, out var openErr))
             {
-                MessageBox.Show("Súbor PDF neexistuje.", "História", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(openErr ?? "Nepodarilo sa otvoriť PDF.", "História", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
-            }
-            try
-            {
-                Process.Start(new ProcessStartInfo(h.PdfPath) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Nepodarilo sa otvoriť PDF: " + ex.Message, "Chyba", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -468,12 +460,31 @@ namespace PetShopLabelPrinter
         private void BtnAdminMode_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new AdminPinDialog { Owner = this };
-            if (dlg.ShowDialog() != true || dlg.Pin != AdminPin)
+            if (dlg.ShowDialog() != true)
+                return;
+            if (!_pinService.TryVerify(dlg.Pin, out var err))
             {
-                MessageBox.Show("Nesprávny PIN.", "Admin", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(err ?? "Nesprávny PIN.", "Admin", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             SwitchToAdminMode();
+        }
+
+        private void BtnChangeAdminPin_Click(object sender, RoutedEventArgs e)
+        {
+            var oldPin = PwdChangeOld.Password ?? "";
+            var newPin = PwdChangeNew.Password ?? "";
+            var confirm = PwdChangeConfirm.Password ?? "";
+            if (!_pinService.TryChangePin(oldPin, newPin, confirm, out var err))
+            {
+                MessageBox.Show(err ?? "Zmena PINu zlyhala.", "Zmena PINu", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            PwdChangeOld.Password = "";
+            PwdChangeNew.Password = "";
+            PwdChangeConfirm.Password = "";
+            MessageBox.Show("Admin PIN bol zmenený.", "Zmena PINu", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void SwitchToUserMode()
@@ -668,11 +679,10 @@ namespace PetShopLabelPrinter
         private void BtnGenerateTestPdf_Click(object sender, RoutedEventArgs e)
         {
             var path = _calibService.GenerateTestPdf();
-            try
+            if (!SafeDocumentLauncher.TryOpenPdf(path, out _))
             {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                MessageBox.Show("Nepodarilo sa otvoriť vygenerované PDF.", "Test", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-            catch { }
         }
 
         private void BtnPrintTest_Click(object sender, RoutedEventArgs e)

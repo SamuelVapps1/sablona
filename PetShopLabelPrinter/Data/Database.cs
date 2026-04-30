@@ -144,15 +144,15 @@ namespace PetShopLabelPrinter.Data
                 {
                     var seed = new[]
                     {
-                        ("Royal Canin", "Medium Adult", "Balenie 1 kg", 1m, 8.50m, "Balenie 17 kg", 17m, 42.90m),
-                        ("Purina Pro Plan", "Adult", "Balenie 0,4 kg", 0.4m, 4.20m, "Balenie 14 kg", 14m, 38.50m),
-                        ("Brit Care", "Grain Free", "Balenie 2 kg", 2m, 12.00m, "Balenie 12 kg", 12m, 32.00m)
+                        ("Acana", "Adult Dog", "Balenie 1 kg", 1m, 8.50m, "Balenie 12 kg", 12m, 39.90m, "8586012345601"),
+                        ("Purina Pro Plan Veterinary Diets Gastrointestinal Sensitive Digestion", "Chicken Formula", "Balenie 400 g", 0.4m, 4.20m, "Balenie 14 kg", 14m, 38.50m, "8586012345602"),
+                        ("Royal Canin Maxi Adult Sensitive Skin and Coat Support for Long Named Breeds Premium Nutrition", "Special Formula with Omega and Vitamins", "Balenie 800 g", 0.8m, 6.90m, "Balenie 17 kg", 17m, 42.90m, "8586012345603")
                     };
-                    foreach (var (pn, vt, spl, spw, spp, lpl, lpw, lpp) in seed)
+                    foreach (var (pn, vt, spl, spw, spp, lpl, lpw, lpp, barcode) in seed)
                     {
                         using var ins = conn.CreateCommand();
                         ins.CommandText = @"INSERT INTO Products (ProductName, VariantText, SmallPackLabel, SmallPackWeightKg, SmallPackPrice, LargePackLabel, LargePackWeightKg, LargePackPrice, UnitPriceOverride, UnitPriceText, Notes, Ean, Sku, ExpiryDate, ShowEan, ShowSku, ShowExpiry, BarcodeEnabled, BarcodeValue, BarcodeFormat, BarcodeShowText)
-                            VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, NULL, '', '', NULL, NULL, NULL, 0, 0, 0, 0, NULL, 'EAN13', 1)";
+                            VALUES (@pn, @vt, @spl, @spw, @spp, @lpl, @lpw, @lpp, NULL, '', '', @ean, NULL, NULL, 1, 0, 0, 1, @bc, 'EAN13', 1)";
                         ins.Parameters.AddWithValue("@pn", pn);
                         ins.Parameters.AddWithValue("@vt", vt);
                         ins.Parameters.AddWithValue("@spl", spl);
@@ -161,6 +161,8 @@ namespace PetShopLabelPrinter.Data
                         ins.Parameters.AddWithValue("@lpl", lpl);
                         ins.Parameters.AddWithValue("@lpw", lpw);
                         ins.Parameters.AddWithValue("@lpp", lpp);
+                        ins.Parameters.AddWithValue("@ean", barcode);
+                        ins.Parameters.AddWithValue("@bc", barcode);
                         ins.ExecuteNonQuery();
                     }
                 }

@@ -217,6 +217,18 @@
                     </StackPanel>
                 </GroupBox>
 
+                <GroupBox Header="Zmena admin PINu" Padding="12" Margin="0,0,0,8">
+                    <StackPanel MaxWidth="360">
+                        <TextBlock Text="Súčasný PIN"/>
+                        <PasswordBox x:Name="PwdChangeOld" Margin="0,2,0,8"/>
+                        <TextBlock Text="Nový PIN"/>
+                        <PasswordBox x:Name="PwdChangeNew" Margin="0,2,0,8"/>
+                        <TextBlock Text="Potvrdenie nového PIN"/>
+                        <PasswordBox x:Name="PwdChangeConfirm" Margin="0,2,0,8"/>
+                        <Button x:Name="BtnChangeAdminPin" Content="Uložiť nový PIN" Click="BtnChangeAdminPin_Click" Padding="12,6" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </GroupBox>
+
                 <GroupBox Header="História" Padding="12" Margin="0,0,0,8">
                     <Button x:Name="BtnClearHistory" Content="Vymazať históriu" Click="BtnClearHistory_Click" Padding="12,6"/>
                 </GroupBox>

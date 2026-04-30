@@ -2,6 +2,13 @@
 
 WPF aplikácia na tlač štítkov pre pet shop s podporou viacerých formátov a Alfa+ interoperabilitou.
 
+## Admin PIN a bezpečnosť
+
+- Kým v databáze nie je uložený hash PINu, funguje **migračný** predvolený PIN `1234`. Pri prvom úspešnom prihlásení do Admin režimu sa PIN uloží ako **PBKDF2** (soľ + hash, 100 000 iterácií) do tabuľky `AppSettings` v lokálnom SQLite súbore (`%LocalAppData%\PetShopLabelPrinter\labels.db`).
+- V Admin paneli v sekcii **Zmena admin PINu** nastavte vlastný PIN (minimálne 4 znaky); odporúča sa hneď po prvom nasadení.
+- Po opakovaných neúspešných pokusoch o prihlásenie je na krátky čas **blokácia** ďalších pokusov.
+- Otváranie súborov z histórie exportov a generovaných testov je obmedzené na **existujúce absolútne cesty** s príponou `.pdf` (ochrana pred neočakávaným spustením iného typu súboru).
+
 ## CSV formát (Alfa+ import/export)
 
 ### Import z Alfa+
